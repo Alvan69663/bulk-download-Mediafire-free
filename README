@@ -19,7 +19,8 @@ Running on Windows:
 
 How to use:
 	1. Run mfdl.py OUTPUT_DIR URL_LIST [URL_LIST]
-	2. mf-dl will then start downloading all of the links from URL_LIST to OUTPUT_DIR
+	2. If you only want to download metadata use the --only-meta argument
+	3. mf-dl will then start downloading all of the links from URL_LIST to OUTPUT_DIR
 
 Directory structure:
 	File: xxxxxxxxxxxxxxx/FILENAME
