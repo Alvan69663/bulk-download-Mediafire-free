@@ -1,7 +1,6 @@
 Dependencies:
 	python3
 	requests
-	urllib3
 
 Running on GNU/Linux:
 	1. Using your package manager download all of the dependencies
