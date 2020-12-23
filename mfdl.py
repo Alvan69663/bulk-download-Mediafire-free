@@ -53,7 +53,7 @@ def download_file(mediafire_id, output_dir, only_meta=0):
 	#Display info
 	print("\033[90m{}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m".format(metadata["file_info"]["created"],
 	                                                                     metadata["file_info"]["owner_name"],
-																		 metadata["file_info"]["filename"]), end="")
+	                                                                     metadata["file_info"]["filename"]), end="")
 	sys.stdout.flush()
 
 	#Individually shared files point to an info page, but files shared in a folder point directly to the file
@@ -101,7 +101,7 @@ def download_folder(mediafire_id, output_dir, level=0, only_meta=0):
 
 	print("\033[90m{}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m".format(metadata["folder_info"]["created"],
 	                                                                     metadata["folder_info"]["owner_name"],
-																		 metadata["folder_info"]["name"]))
+	                                                                     metadata["folder_info"]["name"]))
 
 	metadata["children"] = {"folders": [], "files": []}
 
