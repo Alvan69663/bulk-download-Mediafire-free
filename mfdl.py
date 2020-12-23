@@ -7,6 +7,9 @@ http_headers = {
 }
 
 def download_url(url, local_filename):
+	#Don't overwrite
+	if(os.path.exists(local_filename)):
+		return
 	#Save url as local_filename
 	r = requests.get(url, headers=http_headers, stream=True, timeout=timeout_t)
 	with open(local_filename, 'wb') as f:
@@ -89,7 +92,7 @@ def get_folder_metadata(folder_key):
 	rq = requests.post("https://www.mediafire.com/api/1.5/folder/get_info.php", params={"folder_key": folder_key, "response_format": "json"}, headers=http_headers, timeout=timeout_t)
 	return rq.json()["response"]
 
-def download_folder(mediafire_id, output_dir, level=0):
+def download_folder(mediafire_id, output_dir, level=0, only_meta=0):
 	#Recursively downloads a folder
 	metadata = get_folder_metadata(mediafire_id)
 	if(metadata["result"] != "Success"): #Error from mediafire
@@ -110,7 +113,7 @@ def download_folder(mediafire_id, output_dir, level=0):
 		metadata["children"]["folders"] += children_folders_chunk["folder_content"]["folders"]
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
 	for folder in metadata["children"]["folders"]:
-		download(folder["folderkey"], output_dir, level=level+1)
+		download(folder["folderkey"], output_dir, level=level+1, only_meta=only_meta)
 
 	#Download files inside
 	chunk = 1
@@ -120,11 +123,16 @@ def download_folder(mediafire_id, output_dir, level=0):
 		metadata["children"]["files"] += children_files_chunk["folder_content"]["files"]
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
 	for fl in metadata["children"]["files"]:
-		download(fl["quickkey"], output_dir, level=level+1)
+		download(fl["quickkey"], output_dir, level=level+1, only_meta=only_meta)
 	
 	#Write metadata
 	with open(output_dir + "/" + mediafire_id + ".info.json", "w") as fl:
 		fl.write(json.dumps(metadata))
+	#Download avatar
+	avatar_fname = metadata["folder_info"]["avatar"][::-1] #Get the filename
+	avatar_fname = avatar_fname[:avatar_fname.find("/")][::-1]
+	os.makedirs(output_dir + "/avatars", exist_ok=True)
+	download_url(metadata["folder_info"]["avatar"], output_dir + "/avatars/" + avatar_fname)
 
 def download(mediafire_id, output_dir, level=0, only_meta=0):
 	#Download mediafire key and save it in output_dir
@@ -138,7 +146,7 @@ def download(mediafire_id, output_dir, level=0, only_meta=0):
 				if(len(mediafire_id) == len("tsw4yx1ns4c87cf")): #Single file
 					download_file(mediafire_id, output_dir, only_meta=only_meta)
 				elif(len(mediafire_id) == len("eis9b1dahdcw3")): #Folder
-					download_folder(mediafire_id, output_dir, level=level)
+					download_folder(mediafire_id, output_dir, level=level, only_meta=only_meta)
 				is_downloaded = True
 			except Exception:
 				traceback.print_exc()
