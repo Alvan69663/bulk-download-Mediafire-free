@@ -25,7 +25,7 @@ def get_mediafire_urls(files):
 		urls = analyze.get_urls_from_files(list(files))
 		mediafire_urls = []
 		for url in urls:
-			if("mediafire" in url):
+			if(("mediafire" in url) or ("mfi.re" in url)):
 				mediafire_urls.append(url)
 
 		files = []
