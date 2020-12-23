@@ -1,5 +1,5 @@
 #!/bin/env python3
-import requests, json, os, traceback, time, random, sys
+import requests, json, os, traceback, time, random, sys, argparse
 
 timeout_t = 30
 http_headers = {
@@ -156,27 +156,17 @@ def download(mediafire_id, output_dir, level=0, only_meta=0):
 if(__name__ == "__main__"):
 	#CLI front end
 	import analyze_mediafire
-	only_meta = 0
-	arg_list = []
-	for arg in sys.argv:
-		if(arg == "--only-meta"):
-			only_meta = 1
-		else:
-			arg_list.append(arg)
-			
-	if(len(arg_list) < 3):
-		print("Usage: ")
-		print(" ./{} OUTPUT_DIR URL_LIST [URL_LIST]".format(arg_list[0]))
-		print("\nArguments:")
-		print(" --only-meta		Skip downloading the actual files, only download metadata")
-		exit()
+	
+	parser = argparse.ArgumentParser(description="Mediafire downloader")
+	parser.add_argument("--only-meta", action="store_true", help="Only download *.info.json files and avatars")
+	parser.add_argument("output", help="Output directory")
+	parser.add_argument("input", nargs="+", help="Input file/files which will be searched for links")
+	args = parser.parse_args()
 
-	output_dir = arg_list[1]
-	id_list_fnames = arg_list[2:]
-	id_lists = analyze_mediafire.get_mediafire_urls(id_list_fnames)
+	id_lists = analyze_mediafire.get_mediafire_urls(args.input)
 	id_list = []
 	id_list += id_lists["files"]
 	id_list += id_lists["dirs"]
 	for mediafire_id in id_list: #Download files
-		download(mediafire_id, output_dir, only_meta=only_meta)
+		download(mediafire_id, args.output, only_meta=args.only_meta)
 		time.sleep(random.random())
