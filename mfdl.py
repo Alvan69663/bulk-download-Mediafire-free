@@ -159,8 +159,12 @@ def download(mediafire_id, output_dir, level=0, only_meta=0, download_info=""):
 
 def worker(args, download_queue, archive_lock, print_lock, thread_id):
 	while(1):
-			mediafire_id = download_queue.get(block=0)
-			if(not mediafire_id):
+			try:
+				mediafire_id = download_queue.get(block=0)
+			except queue.Empty:
+				print_lock.acquire()
+				print("\033[90mThread #{}\033[0m \033[32m Queue is empty\033[0m".format(thread_id))
+				print_lock.release()
 				return
 			download_info = download(mediafire_id, args.output, only_meta=args.only_meta)
 			print_lock.acquire()
