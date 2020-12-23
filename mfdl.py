@@ -158,7 +158,10 @@ def download(mediafire_id, output_dir, level=0, only_meta=0, download_info=""):
 				time.sleep(10)
 
 def worker(args, download_queue, archive_lock, print_lock, thread_id):
-	while(mediafire_id := download_queue.get(block=0)):
+	while(1):
+			mediafire_id = download_queue.get(block=0)
+			if(not mediafire_id):
+				return
 			download_info = download(mediafire_id, args.output, only_meta=args.only_meta)
 			print_lock.acquire()
 			print("\033[90mThread #{}\033[0m ".format(thread_id) + download_info["download_info"], end="")
