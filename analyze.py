@@ -3,6 +3,9 @@ import urllib.parse
 
 URL_CHARS = "^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-!/=?`*;:_{}\|~%"
 
+def truncate_schema(url):
+	return url[url.find("://")+3:]
+
 def get_urls(string):
 	urls = []
 	protocols = ["http://", "https://"]

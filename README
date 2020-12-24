@@ -42,6 +42,9 @@ mfdl.py
 	Use this to find mediafire links and download them. mfdl.py and all of the tools above don't have to have a clean
 	list. You can just feed it a lot of text and it will find URLs in it.
 
+web_crawler.py
+	Use this to search for mediafire links on websites. For more info run ./web_crawler.py --help
+
 tests/*
 	This directory contains tests to test if this tool works
 
