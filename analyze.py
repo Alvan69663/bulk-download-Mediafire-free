@@ -2,10 +2,9 @@
 import urllib.parse
 
 def get_urls(string):
-	words = string.split(" ")
 	urls = []
 	protocols = ["http://", "https://"]
-	for word in words: #Get URLs
+	for word in string.split(" "): #Get URLs
 		for prot in protocols:
 			if(prot in word):
 				urls.append(word[word.find(prot):])
@@ -13,15 +12,12 @@ def get_urls(string):
 	return urls
 
 def get_urls_from_files(files):
-	words = []
+	urls = []
 	for fl in files: #Read descriptions
 		lines = []
 		with open(fl, "r") as fl:
-			lines = fl.read().splitlines()
-		for line in lines:
-			words+=line.split(" ")
-	combined = " ".join(words)
-	urls = get_urls(combined)
+			words = fl.read().replace("\n", " ")
+		urls = get_urls(words)
 	return urls
 
 if(__name__ == "__main__"):
