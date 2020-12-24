@@ -148,9 +148,9 @@ def download(mediafire_id, output_dir, level=0, only_meta=0, download_info=""):
 	sys.stdout.flush()
 	while(1): #Retry until download returns
 			try:
-				if(len(mediafire_id) == len("tsw4yx1ns4c87cf")): #Single file
+				if(len(mediafire_id) in [11, 15, 31]): #Single file
 					return download_file(mediafire_id, output_dir, only_meta=only_meta, download_info=download_info)
-				elif(len(mediafire_id) == len("eis9b1dahdcw3")): #Folder
+				elif(len(mediafire_id) in [13, 19]): #Folder
 					return download_folder(mediafire_id, output_dir, level=level, only_meta=only_meta, download_info=download_info)
 			except Exception:
 				traceback.print_exc()

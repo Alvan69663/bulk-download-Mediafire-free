@@ -15,9 +15,12 @@ def get_mediafire_id(url):
 	candidates.append(current)
 
 	for cand in candidates:
-		if(len(cand) == 15):
+		#Determine type of object by key length
+		#I've never seen 19 and 31 characters long keys,
+		#but according to mediafire's API they are valid
+		if(len(cand) in [11, 15, 31]):
 			return {"type": "file", "id": cand}
-		elif(len(cand) == 13):
+		elif(len(cand) in [13, 19]):
 			return {"type": "directory", "id": cand}
 	return {"type": "unknown", "id": url}
 
