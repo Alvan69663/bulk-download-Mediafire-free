@@ -1,13 +1,21 @@
 #!/bin/env python3
 import urllib.parse
 
+URL_CHARS = "^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-!/=?`*;:_{}\|~%"
+
 def get_urls(string):
 	urls = []
 	protocols = ["http://", "https://"]
 	for word in string.split(" "): #Get URLs
 		for prot in protocols:
 			if(prot in word):
-				urls.append(word[word.find(prot):])
+				url_to_append = ""
+				for symbol in word[word.find(prot):]: #Add symbols to url_to_append as long as they can be used in URLs
+					if(symbol in URL_CHARS):
+						url_to_append += symbol
+					else:
+						break
+				urls.append(url_to_append)
 				break
 	return urls
 
