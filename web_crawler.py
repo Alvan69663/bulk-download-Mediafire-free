@@ -50,6 +50,7 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 					print("\033[90mThread #{}\033[0m \033[95mScraping\033[0m \033[96mstatus={}\033[0m {}".format(thread_id, web_rq.status_code, url))
 					print_lock.release()
 					web_html = requests.get(url, headers=http_headers, timeout=timeout_t, verify=verify_certificates).text
+					web_html.replace("<wbr>", "") #Some sites using <wbr> tag break url search
 				break
 			except Exception:
 				print_lock.acquire()
