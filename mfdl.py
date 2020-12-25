@@ -6,6 +6,12 @@ http_headers = {
 	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:68.0) Gecko/20100101 Firefox/68.0" #Spoof firefox user agent
 }
 
+def log(msg):
+	thread_name = threading.current_thread().name
+	if(thread_name != "MainThread"):
+		print("\033[90mThread #{}\033[0m ".format(thread_name), end="")
+	print(msg)
+
 def download_url(url, local_filename):
 	#Don't overwrite
 	if(os.path.exists(local_filename)):
@@ -31,7 +37,7 @@ def find_direct_url(info_url):
 	uploaded_from_prefix = "<p>This file was uploaded from "
 
 	if((web_html.find(download_link_prefix) == -1)): #If not found
-		return {"success": 0}
+		return 0
 	
 	#Get direct url
 	direct_url = web_html[web_html.find(download_link_prefix)+len(download_link_prefix):]
@@ -44,17 +50,22 @@ def find_direct_url(info_url):
 
 	return {"url": direct_url, "location": location, "success": 1}
 
-def download_file(mediafire_id, output_dir, only_meta=0, download_info=""):
+def download_file(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock()):
 	#Returns 1 on success and 0 otherwise
 	metadata = get_file_metadata(mediafire_id)
 	if(metadata["result"] != "Success"): #Error from mediafire
-		download_info += "\033[31m{}: {}\033[0m\n".format(metadata["result"], metadata["message"])
-		return {"success": 0, "download_info": download_info} #Skip file
+		print_lock.acquire()
+		log("\033[90m{}:\033[0m \033[31m{}: {}\033[0m".format(mediafire_id, metadata["result"], metadata["message"]))
+		print_lock.release()
+		return 0 #Skip file
 	
 	#Display info
-	download_info += "\033[90m{}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m".format(metadata["file_info"]["created"],
-	                                                                                metadata["file_info"]["owner_name"],
-	                                                                                metadata["file_info"]["filename"])
+	print_lock.acquire()
+	log("\033[90m{}: {}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m".format(mediafire_id,
+	                                                                       metadata["file_info"]["created"],
+	                                                                       metadata["file_info"]["owner_name"],
+	                                                                       metadata["file_info"]["filename"]))
+	print_lock.release()
 
 	#Individually shared files point to an info page, but files shared in a folder point directly to the file
 	dwnld_head = requests.head(metadata["file_info"]["links"]["normal_download"], headers=http_headers, timeout=timeout_t).headers
@@ -64,8 +75,10 @@ def download_file(mediafire_id, output_dir, only_meta=0, download_info=""):
 		direct_url = find_direct_url(metadata["file_info"]["links"]["normal_download"])
 		#If couldn't find a download link; There needs to be an additional check because mediafire's API still returns info about files which were taken down
 		if(direct_url["success"] == 0):
-			download_info += "\033[31m{}\033[0m\n".format("Couldn't find download url")
-			return {"success": 0, "download_info": download_info}
+			print_lock.acquire()
+			log("\033[90m{}: \033[0m\033[31mCouldn't find download url\033[0m".format(mediafire_id))
+			print_lock.release()
+			return 0
 		metadata["location"] = direct_url["location"]
 		direct_url = direct_url["url"]
 
@@ -77,8 +90,7 @@ def download_file(mediafire_id, output_dir, only_meta=0, download_info=""):
 	#Write metadata
 	with open(output_dir + "/" + mediafire_id + ".info.json", "w") as fl:
 		fl.write(json.dumps(metadata))
-	download_info += "\n"
-	return {"success": 1, "download_info": download_info}
+	return 1
 
 def get_folder_content(folder_key, content_type, chunk):
 	#Get "response" key from mediafire's folder/get_info.php API function
@@ -93,30 +105,35 @@ def get_folder_metadata(folder_key):
 	rq = requests.post("https://www.mediafire.com/api/1.5/folder/get_info.php", params={"folder_key": folder_key, "response_format": "json"}, headers=http_headers, timeout=timeout_t)
 	return rq.json()["response"]
 
-def download_folder(mediafire_id, output_dir, level=0, only_meta=0, download_info=""):
+def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock()):
 	#Recursively downloads a folder
 	#Returns 1 on success and 0 otherwise
 	metadata = get_folder_metadata(mediafire_id)
 	if(metadata["result"] != "Success"): #Error from mediafire
-		download_info += "\033[31m{}: {}\033[0m\n".format(metadata["result"], metadata["message"])
-		return {"success": 0, "download_info": download_info} #Skip folder
-
-	download_info += "\033[90m{}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m\n".format(metadata["folder_info"]["created"],
-	                                                                                  metadata["folder_info"]["owner_name"],
-	                                                                                  metadata["folder_info"]["name"])
+		print_lock.acquire()
+		log("\033[90m{}: \033[0m\033[31m{}: {}\033[0m".format(mediafire_id, metadata["result"], metadata["message"]))
+		print_lock.release()
+		return 0 #Skip folder
+	
+	print_lock.acquire()
+	log("\033[90m{}: {}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m".format(mediafire_id,
+	                                                                       metadata["folder_info"]["created"],
+	                                                                       metadata["folder_info"]["owner_name"],
+	                                                                       metadata["folder_info"]["name"]))
+	print_lock.release()
 
 	metadata["children"] = {"folders": [], "files": []}
 
 	#Download folders inside
 	chunk = 1
 	more_chunks = True
-	while(more_chunks != "no"): #TODO: find a folder with >100 elements to check if chunking works ; setting chunk_size only works for sizes 100-1000
+	while(more_chunks != "no"):
 		children_folders_chunk = get_folder_content(mediafire_id, "folders", chunk)
 		metadata["children"]["folders"] += children_folders_chunk["folder_content"]["folders"]
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for folder in metadata["children"]["folders"]:
-		download_info += download(folder["folderkey"], output_dir, level=level+1, only_meta=only_meta)["download_info"]
+		download(folder["folderkey"], output_dir, only_meta=only_meta)
 
 	#Download files inside
 	chunk = 1
@@ -127,7 +144,7 @@ def download_folder(mediafire_id, output_dir, level=0, only_meta=0, download_inf
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for fl in metadata["children"]["files"]:
-		download_info += download(fl["quickkey"], output_dir, level=level+1, only_meta=only_meta)["download_info"]
+		download(fl["quickkey"], output_dir, only_meta=only_meta)
 	
 	#Write metadata
 	with open(output_dir + "/" + mediafire_id + ".info.json", "w") as fl:
@@ -137,42 +154,40 @@ def download_folder(mediafire_id, output_dir, level=0, only_meta=0, download_inf
 	avatar_fname = avatar_fname[:avatar_fname.find("/")][::-1]
 	os.makedirs(output_dir + "/avatars", exist_ok=True)
 	download_url(metadata["folder_info"]["avatar"], output_dir + "/avatars/" + avatar_fname)
-	return {"success": 1, "download_info": download_info}
+	return 1
 
-def download(mediafire_id, output_dir, level=0, only_meta=0, download_info=""):
+def download(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock()):
 	#Download mediafire key and save it in output_dir
-	#Returns {"success": int, "download_info": str}
-	#msg is a short description of a downloaded file/files
-	#In case of a mediafire error - success=0
+	#In case of a mediafire error return 0
 	#In case of an exception - retry after 10 seconds
-	#Otherwise success=1
-	download_info += "  "*level + "\033[90m{}\033[0m ".format(mediafire_id)
-	sys.stdout.flush()
+	#Otherwise return 1
 	while(1): #Retry until download returns
+			print_lock.acquire()
+			log("\033[90m{}: Downloading...\033[0m".format(mediafire_id))
+			print_lock.release()
 			try:
 				if(len(mediafire_id) in [11, 15, 31]): #Single file
-					return download_file(mediafire_id, output_dir, only_meta=only_meta, download_info=download_info)
+					return download_file(mediafire_id, output_dir, only_meta=only_meta)
 				elif(len(mediafire_id) in [13, 19]): #Folder
-					return download_folder(mediafire_id, output_dir, level=level, only_meta=only_meta, download_info=download_info)
+					return download_folder(mediafire_id, output_dir, only_meta=only_meta)
 			except Exception:
+				print_lock.acquire()
 				traceback.print_exc()
-				print("Error while downloading! Retrying in 10s...")
+				log("\033[90m{}: \033[0m\033[31mError while downloading! Retrying in 10s...\033[0m".format(mediafire_id))
+				print_lock.release()
 				time.sleep(10)
 
-def worker(args, download_queue, archive_lock, print_lock, thread_id):
+def worker(args, download_queue, archive_lock, print_lock):
 	while(1):
 			try:
 				mediafire_id = download_queue.get(block=0)
 			except queue.Empty:
 				print_lock.acquire()
-				print("\033[90mThread #{}\033[0m \033[32m Queue is empty\033[0m".format(thread_id))
+				log("\033[32mQueue is empty\033[0m")
 				print_lock.release()
 				return
-			download_info = download(mediafire_id, args.output, only_meta=args.only_meta)
-			print_lock.acquire()
-			print("\033[90mThread #{}\033[0m ".format(thread_id) + download_info["download_info"], end="")
-			print_lock.release()
-			if(download_info["success"]):
+			download_successful = download(mediafire_id, args.output, only_meta=args.only_meta, print_lock=print_lock)
+			if(download_successful):
 				archive.append(mediafire_id)
 				if(args.archive):
 					archive_lock.acquire()
@@ -220,6 +235,7 @@ if(__name__ == "__main__"):
 		download_queue.put(mediafire_id)
 
 	for i in range(args.threads): #Launch threads
-		thread = threading.Thread(target=worker, args=(args, download_queue, archive_lock, print_lock, i,))
+		thread = threading.Thread(target=worker, args=(args, download_queue, archive_lock, print_lock,))
+		thread.name = i
 		thread.start()
 		worker_list.append(thread)
