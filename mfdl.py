@@ -114,6 +114,7 @@ def download_folder(mediafire_id, output_dir, level=0, only_meta=0, download_inf
 		children_folders_chunk = get_folder_content(mediafire_id, "folders", chunk)
 		metadata["children"]["folders"] += children_folders_chunk["folder_content"]["folders"]
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
+		chunk+=1
 	for folder in metadata["children"]["folders"]:
 		download_info += download(folder["folderkey"], output_dir, level=level+1, only_meta=only_meta)["download_info"]
 
@@ -124,6 +125,7 @@ def download_folder(mediafire_id, output_dir, level=0, only_meta=0, download_inf
 		children_files_chunk = get_folder_content(mediafire_id, "files", chunk)
 		metadata["children"]["files"] += children_files_chunk["folder_content"]["files"]
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
+		chunk+=1
 	for fl in metadata["children"]["files"]:
 		download_info += download(fl["quickkey"], output_dir, level=level+1, only_meta=only_meta)["download_info"]
 	
