@@ -1,5 +1,7 @@
 #!/bin/env python3
 import requests, json, os, traceback, time, random, sys, argparse, queue, threading
+from colorama import init
+init() #This should fix ansi escape codes on windows TODO: test it
 
 timeout_t = 30
 http_headers = {

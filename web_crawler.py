@@ -2,6 +2,8 @@
 import argparse, threading, queue, ipaddress, os, analyze, analyze_mediafire, requests, time, traceback
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+from colorama import init
+init() #This should fix ansi escape codes on windows TODO: test it
 
 timeout_t = 30
 http_headers = {

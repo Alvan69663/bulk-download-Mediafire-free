@@ -3,6 +3,7 @@ Dependencies:
 	requests
 	beautifulsoup4
 	lxml
+	colorama
 
 Running on GNU/Linux:
 	1. Using your package manager download all of the dependencies
@@ -16,7 +17,6 @@ Running on Windows:
 	3. Open the command line
 	4. Go to the directory containing mfdl.py
 	5. Use according to the guide below
-	6. I have no idea if ansi escape codes work on windows, so the output might be kinda fucked
 
 How to use:
 	1. Run mfdl.py OUTPUT_DIR URL_LIST [URL_LIST]
