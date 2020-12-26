@@ -15,7 +15,7 @@ mf-dl is a command line program for downloading mediafire links in bulk. It also
 
 # mfdl.py
 	usage: mfdl.py [-h] [--only-meta] [--archive ARCHIVE] [--threads THREADS]
-		           output input [input ...]
+	               output input [input ...]
 	
 	Mediafire downloader
 	
@@ -27,26 +27,26 @@ mf-dl is a command line program for downloading mediafire links in bulk. It also
 	  -h, --help         show this help message and exit
 	  --only-meta        Only download *.info.json files and avatars
 	  --archive ARCHIVE  File used to determine which files were already
-		                 downloaded
+	                     downloaded
 	  --threads THREADS  How many threads to use; in case mediafire starts showing
-		                 captchas or smth the amount of threads should be reduced;
-		                 default is 6
+	                     captchas or smth the amount of threads should be reduced;
+	                     default is 6
 
 # web_crawler.py
 	usage: web_crawler.py [-h] [--threads THREADS] [--filter FILTER] start output
-	
+
 	Mediafire link web scraper
-	
+
 	positional arguments:
 	  start              Start URL from which the scraper will begin to
-		                 recursively scrape pages
-	  output             File where a list of scraped pages will be saved
-	
+	                     recursively scrape pages
+	  output             File where a list of links will be saved
+
 	optional arguments:
 	  -h, --help         show this help message and exit
 	  --threads THREADS  How many threads to use; if the site you're trying to
-		                 crawl will start displaying captchas or smth the amount
-		                 of threads should be reduced; default is 6
+	                     crawl will start displaying captchas or smth the amount
+	                     of threads should be reduced; default is 6
 	  --filter FILTER    Only scrape websites where filter is found in the url
 
 # Directory structure:

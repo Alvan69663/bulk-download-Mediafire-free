@@ -116,7 +116,7 @@ if(__name__ == "__main__"):
 	parser.add_argument("--threads", type=int, default=6, help="How many threads to use; if the site you're trying to crawl will start displaying captchas or smth the amount of threads should be reduced; default is 6")
 	parser.add_argument("--filter", default="", help="Only scrape websites where filter is found in the url")
 	parser.add_argument("start", help="Start URL from which the scraper will begin to recursively scrape pages")
-	parser.add_argument("output", help="File where a list of scraped pages will be saved")
+	parser.add_argument("output", help="File where a list of links will be saved")
 
 	args = parser.parse_args()
 
