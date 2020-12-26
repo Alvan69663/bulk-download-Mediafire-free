@@ -1,25 +1,18 @@
-Dependencies:
-	python3
-	requests
-	beautifulsoup4
-	lxml
-	colorama
-
 Running on GNU/Linux:
-	1. Using your package manager download all of the dependencies
-	2. Go to the directory containing mfdl.py
+	1. Go to the directory containing mf-dl
+	2. Using your package manager install python3 and download all of the dependencies or run "python3 -m pip install -r requirements.txt" in the directory with mf-dl
 	3. Run chmod +x mfdl.py
 	4. Use according to the guide below
 
 Running on Windows:
 	1. Download and install python3 from their site
-	2. Install all of the dependencies using pip (https://www.geeksforgeeks.org/how-to-install-requests-in-python-for-windows-linux-mac/)
-	3. Open the command line
-	4. Go to the directory containing mfdl.py
+	2. Open the command line
+	3. Go to the directory with mf-dl using "cd DIRECTORY"
+	4. Install all of the dependencies using "python3 -m pip install -r requirements.txt"
 	5. Use according to the guide below
 
 How to use:
-	1. Run mfdl.py OUTPUT_DIR URL_LIST [URL_LIST]
+	1. Run "python3 mfdl.py OUTPUT_DIR URL_LIST [URL_LIST]"
 	2. For a list of optional arguments check out mfdl.py --help
 	3. mf-dl will then start downloading all of the links from URL_LIST to OUTPUT_DIR
 
