@@ -37,7 +37,7 @@ def find_direct_url(info_url):
 	uploaded_from_prefix = "<p>This file was uploaded from "
 
 	if((web_html.find(download_link_prefix) == -1)): #If not found
-		return 0
+		return {"success": 0}
 	
 	#Get direct url
 	direct_url = web_html[web_html.find(download_link_prefix)+len(download_link_prefix):]
