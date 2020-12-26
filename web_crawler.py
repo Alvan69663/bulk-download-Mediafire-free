@@ -21,13 +21,11 @@ MAX_RETRIES = 5
 def worker(download_queue, output, output_list, archive, print_lock, output_lock, archive_lock, url_filter, thread_id, threads_working, threads_working_lock):
 	while(1):
 		#Get element from the queue
-		threads_working_lock.acquire()
-		threads_working[thread_id] = STATUS_NOT_WORKING
-		threads_working_lock.release()
+		with threads_working_lock:
+			threads_working[thread_id] = STATUS_NOT_WORKING
 		url = download_queue.get(block=1)
-		threads_working_lock.acquire()
-		threads_working[thread_id] = STATUS_WORKING
-		threads_working_lock.release()
+		with threads_working_lock:
+			threads_working[thread_id] = STATUS_WORKING
 
 		#Download page
 		retries = MAX_RETRIES
@@ -42,35 +40,29 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 						skip_get = 0
 						break
 				if(skip_get): #Skip based on content type
-					print_lock.acquire()
-					print("\033[90mThread #{}\033[0m \033[93mSkipping\033[0m {}".format(thread_id, url))
-					print_lock.release()
+					with print_lock:
+						print("\033[90mThread #{}\033[0m \033[93mSkipping\033[0m {}".format(thread_id, url))
 				else:
-					print_lock.acquire()
-					print("\033[90mThread #{}\033[0m \033[95mScraping\033[0m \033[96mstatus={}\033[0m {}".format(thread_id, web_rq.status_code, url))
-					print_lock.release()
+					with print_lock:
+						print("\033[90mThread #{}\033[0m \033[95mScraping\033[0m \033[96mstatus={}\033[0m {}".format(thread_id, web_rq.status_code, url))
 					web_html = requests.get(url, headers=http_headers, timeout=timeout_t, verify=verify_certificates).text
 					web_html.replace("<wbr>", "") #Some sites using <wbr> tag break url search
 				break
 			except Exception:
-				print_lock.acquire()
-				traceback.print_exc()
-				print("\033[90mThread #{}\033[0m \033[31mError while downloading \033[0m{}\033[31m! Retrying in 2 minutes ({} retries remaining)\033[0m".format(thread_id, url, retries))
-				print_lock.release()
-				threads_working_lock.acquire()
-				threads_working[thread_id] = STATUS_ERROR
-				threads_working_lock.release()
+				with print_lock:
+					traceback.print_exc()
+					print("\033[90mThread #{}\033[0m \033[31mError while downloading \033[0m{}\033[31m! Retrying in 2 minutes ({} retries remaining)\033[0m".format(thread_id, url, retries))
+				with threads_working_lock:
+					threads_working[thread_id] = STATUS_ERROR
 				time.sleep(60*2)
 				retries-=1
 		if(retries == 0):
-			print_lock.acquire()
-			print("\033[90mThread #{}\033[0m \033[31mMax number of retries exceeded on\033[0m {}\033[31m!\033[0m".format(thread_id, url))
-			print_lock.release()
+			with print_lock:
+				print("\033[90mThread #{}\033[0m \033[31mMax number of retries exceeded on\033[0m {}\033[31m!\033[0m".format(thread_id, url))
 			continue
 		elif(retries<MAX_RETRIES):
-			threads_working_lock.acquire()
-			threads_working[thread_id] = STATUS_WORKING #Working again
-			threads_working_lock.release()
+			with threads_working_lock:
+				threads_working[thread_id] = STATUS_WORKING #Working again
 		if(skip_get):
 			continue
 
@@ -80,38 +72,34 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 			html_url_no_schema = analyze.truncate_schema(html_url)
 			try: #Skip private ip addresses
 				if(ipaddress.ip_address(html_url_no_schema).is_private):
-					print_lock.acquire()
-					print("\033[31mSkipping local address\033[0m {}".format(html_url_no_schema))
-					print_lock.release()
+					with print_lock:
+						print("\033[31mSkipping local address\033[0m {}".format(html_url_no_schema))
 					continue
 			except ValueError:
 				pass
 
 			if(("mediafire.com" in html_url) or ("mfi.re" in html_url)): #If mediafire
-				output_lock.acquire()
-				already_downloaded = 0
-				if(html_url_no_schema in output_list):
-					already_downloaded = 1
-				if(not already_downloaded):
-					with open(output, "a") as fl:
-						fl.write(html_url)
-						fl.write("\n")
-					output_list.append(html_url_no_schema)
-					print_lock.acquire()
-					print("\033[90mThread #{}\033[0m \033[92mFound\033[0m {}".format(thread_id, html_url))
-					print_lock.release()
-				output_lock.release()
+				with output_lock:
+						already_downloaded = 0
+						if(html_url_no_schema in output_list):
+							already_downloaded = 1
+						if(not already_downloaded):
+							with open(output, "a") as fl:
+								fl.write(html_url)
+								fl.write("\n")
+							output_list.append(html_url_no_schema)
+							with print_lock:
+								print("\033[90mThread #{}\033[0m \033[92mFound\033[0m {}".format(thread_id, html_url))
 			else: #Recurse into every site which isn't mediafire
 				if(not url_filter in html_url): #Filter url
 					continue
-				archive_lock.acquire()
-				already_downloaded = 0
-				if(html_url_no_schema in archive):
-					already_downloaded = 1
-				if(not already_downloaded):
-					download_queue.put(html_url)
-					archive.append(html_url_no_schema)
-				archive_lock.release()
+				with archive_lock:
+						already_downloaded = 0
+						if(html_url_no_schema in archive):
+							already_downloaded = 1
+						if(not already_downloaded):
+							download_queue.put(html_url)
+							archive.append(html_url_no_schema)
 
 if(__name__ == "__main__"):
 	#CLI front end
@@ -149,9 +137,8 @@ if(__name__ == "__main__"):
 	while(any_thread_alive):
 		time.sleep(15)
 
-		threads_working_lock.acquire()
-		threads_working_copy = threads_working.copy() #Copy thread status
-		threads_working_lock.release()
+		with threads_working_lock:
+			threads_working_copy = threads_working.copy() #Copy thread status
 		#Check if any thread is alive
 		any_thread_alive = 0
 		for i in range(args.threads):
@@ -166,6 +153,5 @@ if(__name__ == "__main__"):
 			elif(threads_working_copy[i] == 1): thread_color = "\033[32m"
 			elif(threads_working_copy[i] == 2): thread_color = "\033[33m"
 			threads_working_copy[i] = thread_color + str(i) + "\033[0m"
-		print_lock.acquire()
-		print("\033[90mThread status:\033[0m " + "".join(threads_working_copy))
-		print_lock.release()
+		with print_lock:
+			print("\033[90mThread status:\033[0m " + "".join(threads_working_copy))
