@@ -1,5 +1,7 @@
 #!/bin/env python3
 import argparse, threading, queue, ipaddress, os, analyze, analyze_mediafire, requests, time, traceback
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 timeout_t = 30
 http_headers = {
@@ -67,7 +69,12 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 			continue
 
 		#Get urls
-		html_urls = analyze.get_urls(web_html)
+		html_urls = analyze.get_urls(web_html) #This will get every absolute URL; this has the advantage of getting all of the urls written in plain text
+		#This will also get the absolute URL for every relative path in <a> tags
+		soup = BeautifulSoup(web_html, "lxml")
+		for link in soup.find_all("a"):
+			html_urls.append(urljoin(url, link.get('href')))
+
 		for html_url in html_urls:
 			html_url_no_schema = analyze.truncate_schema(html_url)
 			try: #Skip private ip addresses
