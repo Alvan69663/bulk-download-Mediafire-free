@@ -17,14 +17,14 @@ def get_mediafire_links(text):
 	for match in mf_key_matches:
 		for mf_key in match.split(","): #Mediafire allows specifying multiple keys by separating them with ","
 			if(len(mf_key) in [11,13,15,19,31]):
-				output["keys"].append(mf_key) #It's a valid key
+				if(mf_key not in output["keys"]): output["keys"].append(mf_key) #It's a valid key
 
 	mf_link_matches = re.findall(mf_link_re, text)
 	for match in mf_link_matches:
 		if("." in match): #file
-			output["links"].append(match)
+			if(match not in output["links"]): output["links"].append(match)
 		else: #custom folder
-			output["custom_folders"].append(match)
+			if(match not in output["custom_folders"]): output["custom_folders"].append(match)
 
 	return output
 
@@ -35,9 +35,13 @@ def read_mediafire_links(files):
 		with open(fname, "r") as fl:
 			data = fl.read()
 		mf_links = get_mediafire_links(data)
-		output["keys"] += mf_links["keys"]
-		output["links"] += mf_links["links"]
-		output["custom_folders"] += mf_links["custom_folders"]
+		for link in mf_links["keys"]: #Remove duplicates across files
+			if(link not in output["keys"]): output["keys"].append(link)
+		for link in mf_links["links"]:
+			if(link not in output["links"]): output["links"].append(link)
+		for link in mf_links["custom_folders"]:
+			if(link not in output["custom_folders"]): output["custom_folders"].append(link)
+
 	return output
 
 if(__name__ == "__main__"):
