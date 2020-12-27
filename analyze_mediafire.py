@@ -35,11 +35,11 @@ def read_mediafire_links(files):
 			data = fl.read()
 		mf_links = get_mediafire_links(data)
 		for link in mf_links["keys"]: #Remove duplicates across files
-			if(link not in output["keys"]): output["keys"].append(link)
+			if(link not in output["keys"]): output["keys"].append(link.lower()) #Everything except links is case insensitive and links are lowercase anyway
 		for link in mf_links["links"]:
-			if(link not in output["links"]): output["links"].append(link)
+			if(link not in output["links"]): output["links"].append(link.lower())
 		for link in mf_links["custom_folders"]:
-			if(link not in output["custom_folders"]): output["custom_folders"].append(link)
+			if(link not in output["custom_folders"]): output["custom_folders"].append(link.lower())
 
 	return output
 

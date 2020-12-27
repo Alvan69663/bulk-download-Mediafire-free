@@ -1,5 +1,5 @@
 #!/bin/env python3
-import requests, json, os, traceback, time, random, sys, argparse, queue, threading
+import requests, json, os, traceback, time, random, sys, argparse, queue, threading, re
 from colorama import init
 init() #This should fix ansi escape codes on windows TODO: test it
 
@@ -7,6 +7,7 @@ TIMEOUT_T = 30
 HTTP_HEADERS = {
 	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:68.0) Gecko/20100101 Firefox/68.0" #Spoof firefox user agent
 }
+CUSTOM_FOLDER_RE = re.compile(r'afI= "([a-z0-9]{13}|[a-z0-9]{19})"') #Regex used for locating keys on pages with custom named folders e.g. https://www.mediafire.com/MonHun
 
 def log(msg):
 	thread_name = threading.current_thread().name
@@ -172,6 +173,22 @@ def download(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock())
 					log("\033[90m{}: \033[0m\033[31mError while downloading! Retrying in 10s...\033[0m".format(mediafire_id))
 				time.sleep(10)
 
+def resolve_custom_folder(name):
+	while(1): #Retry if an exception is caught
+		log("\033[90mResolving custom folder name:\033[0m \033[96m{}\033[0m".format(name))
+		try:
+			rq = requests.get("https://mediafire.com/{}".format(name), headers=HTTP_HEADERS, timeout=TIMEOUT_T)
+			resolved = CUSTOM_FOLDER_RE.findall(rq.text)
+			if(resolved):
+				resolved = resolved[0] #First result
+				log("\033[96m{}\033[0m \033[90m->\033[0m \033[95m{}\033[0m".format(name, resolved))
+				return resolved
+			else:
+				log("\033[31mUnable to resolve {}\033[0m".format(name))
+				return None
+		except Exception:
+			continue
+
 def worker(args, download_queue, archive_lock, print_lock):
 	while(1):
 			try:
@@ -180,7 +197,7 @@ def worker(args, download_queue, archive_lock, print_lock):
 				with print_lock:
 					log("\033[32mQueue is empty\033[0m")
 				return
-			download_successful = download(mediafire_id, args.output, only_meta=args.only_meta, print_lock=print_lock)
+			download_successful = download(mediafire_id, args.output + "/keys/", only_meta=args.only_meta, print_lock=print_lock)
 			if(download_successful):
 				archive.append(mediafire_id)
 				if(args.archive):
@@ -211,7 +228,31 @@ if(__name__ == "__main__"):
 			archive += fl.read().splitlines()
 
 	#Get ids
-	mediafire_urls = analyze_mediafire.read_mediafire_links(args.input)["keys"]
+	mediafire_urls = analyze_mediafire.read_mediafire_links(args.input)
+
+	#Resolve custom names to keys and save names and their keys to custom_folders.txt
+	#custom_folders.txt format:
+	#"KEY FOLDER_NAME\n"
+	custom_folders_fname = args.output + "/custom_folders.txt"
+	if(not os.path.exists(custom_folders_fname)): #If doesn't exist create
+		with open(custom_folders_fname, 'w'): pass
+	custom_folder_lookup = {}
+	#Read custom folder lookup table
+	with open(custom_folders_fname, "r") as fl:
+		for line in fl.read().splitlines():
+			lookup_entry = line.split(" ")
+			custom_folder_lookup[lookup_entry[1]] = lookup_entry[0]
+	#Resolve names
+	for custom_folder in mediafire_urls["custom_folders"]:
+		if(custom_folder in custom_folder_lookup): #Already in the table
+			mediafire_urls["keys"].append(custom_folder_lookup[custom_folder]) #Add resolved key
+		else: #Not yet resolved
+			resolved = resolve_custom_folder(custom_folder)
+			if(resolved):
+				with open(custom_folders_fname, "a") as fl:
+					fl.write("{} {}\n".format(resolved, custom_folder))
+				mediafire_urls["keys"].append(resolved) #Add resolved key
+				custom_folder_lookup[custom_folder] = resolved
 
 	#Download
 	archive_lock = threading.Lock()
@@ -219,7 +260,7 @@ if(__name__ == "__main__"):
 	worker_list = []
 	download_queue = queue.Queue()
 
-	for mediafire_id in mediafire_urls:
+	for mediafire_id in mediafire_urls["keys"]:
 		if(mediafire_id in archive):
 			continue #Skip if already downloaded
 		download_queue.put(mediafire_id)
