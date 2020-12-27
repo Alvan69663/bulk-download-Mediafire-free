@@ -18,13 +18,18 @@ def log(msg):
 def download_url(url, local_filename):
 	#Don't overwrite
 	if(os.path.exists(local_filename)):
-		return
+		return -1
 	#Save url as local_filename
 	r = requests.get(url, headers=HTTP_HEADERS, stream=True, timeout=TIMEOUT_T)
+	#If error
+	if(not r.ok):
+		return r.status_code
+	#Download
 	with open(local_filename, 'wb') as f:
 		for chunk in r.iter_content(chunk_size=1024): 
 			if chunk: # filter out keep-alive new chunks
 				f.write(chunk)
+	return r.status_code
 
 def get_file_metadata(file_id):
 	#Get "response" key from mediafire's file/get_info.php API function
@@ -163,7 +168,14 @@ def download(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock())
 			with print_lock:
 				log("\033[90m{}: Downloading...\033[0m".format(mediafire_id))
 			try:
-				if(len(mediafire_id) in [11, 15, 31]): #Single file
+				if(mediafire_id.startswith("/conv/")): #Conv link
+					if(download_url("https://mediafire.com" + mediafire_id, output_dir+".."+mediafire_id) in [-1,200]): #Success or already exists
+						log("\033[90m{}: \033[0m\033[96mDownloaded\033[0m".format(mediafire_id))
+						return 1
+					else:
+						log("\033[90m{}: \033[0m\033[31mNot found!\033[0m".format(mediafire_id))
+						return 0
+				elif(len(mediafire_id) in [11, 15, 31]): #Single file
 					return download_file(mediafire_id, output_dir, only_meta=only_meta)
 				elif(len(mediafire_id) in [13, 19]): #Folder
 					return download_folder(mediafire_id, output_dir, only_meta=only_meta)
@@ -254,13 +266,22 @@ if(__name__ == "__main__"):
 				mediafire_urls["keys"].append(resolved) #Add resolved key
 				custom_folder_lookup[custom_folder] = resolved
 
+	#Create download dirs
+	os.makedirs(args.output + "/keys", exist_ok=True)
+	os.makedirs(args.output + "/conv", exist_ok=True)
+
 	#Download
 	archive_lock = threading.Lock()
 	print_lock = threading.Lock()
 	worker_list = []
 	download_queue = queue.Queue()
 
-	for mediafire_id in mediafire_urls["keys"]:
+	for conv_link in mediafire_urls["conv"]: #Download conv links
+		if(conv_link in archive):
+			continue
+		download_queue.put(conv_link)
+
+	for mediafire_id in mediafire_urls["keys"]: #Download keys
 		if(mediafire_id in archive):
 			continue #Skip if already downloaded
 		download_queue.put(mediafire_id)

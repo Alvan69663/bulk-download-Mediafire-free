@@ -52,12 +52,10 @@ mf-dl is a command line program for downloading mediafire links in bulk. It also
 # Directory structure:
 * File: keys/\*/FILENAME
 * File and folder metadata: keys/\*.info.json
+* Conv links: conv/\*
 * Keys of custom folder names: custom_folders.txt
 
 File keys are always 11, 15 or 31 characters long and folder keys are 13 or 19 characters long.
 Folder metadata files contain references to file or folder keys to avoid downloading the same file in a directory
 and as a stand alone file. Navigating through folders is a bit of a pain in the ass atm but I plan on making a tool to browse
 saved archives
-
-# What still doesn't work
-* Downloading conv links: https://www.mediafire.com/conv/e415be4c7369b73bd513a038b28a93dec9659f1d50f02c3e0dd786aee91305566g.jpg
