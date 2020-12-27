@@ -143,14 +143,14 @@ def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.
 	for fl in metadata["children"]["files"]:
 		download(fl["quickkey"], output_dir, only_meta=only_meta)
 	
+	#Download avatar
+	avatar_keys = analyze_mediafire.get_mediafire_links(metadata["folder_info"]["avatar"])["keys"]
+	for avatar in avatar_keys: #There should be only 1 key in an avatar link, but loop through it just to be sure
+		download(avatar, output_dir, only_meta=only_meta)
+
 	#Write metadata
 	with open(output_dir + "/" + mediafire_id + ".info.json", "w") as fl:
 		fl.write(json.dumps(metadata))
-	#Download avatar
-	avatar_fname = metadata["folder_info"]["avatar"][::-1] #Get the filename
-	avatar_fname = avatar_fname[:avatar_fname.find("/")][::-1]
-	os.makedirs(output_dir + "/avatars", exist_ok=True)
-	download_url(metadata["folder_info"]["avatar"], output_dir + "/avatars/" + avatar_fname)
 	return 1
 
 def download(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock()):
@@ -195,7 +195,7 @@ if(__name__ == "__main__"):
 	import analyze_mediafire
 	
 	parser = argparse.ArgumentParser(description="Mediafire downloader")
-	parser.add_argument("--only-meta", action="store_true", help="Only download *.info.json files and avatars")
+	parser.add_argument("--only-meta", action="store_true", help="Only download *.info.json files")
 	parser.add_argument("--archive", help="File used to determine which files were already downloaded")
 	parser.add_argument("--threads", type=int, default=6, help="How many threads to use; in case mediafire starts showing captchas or smth the amount of threads should be reduced; default is 6")
 	parser.add_argument("output", help="Output directory")
@@ -211,7 +211,7 @@ if(__name__ == "__main__"):
 			archive += fl.read().splitlines()
 
 	#Get ids
-	mediafire_urls = analyze_mediafire.get_mediafire_urls(args.input)["keys"]
+	mediafire_urls = analyze_mediafire.read_mediafire_links(args.input)["keys"]
 
 	#Download
 	archive_lock = threading.Lock()

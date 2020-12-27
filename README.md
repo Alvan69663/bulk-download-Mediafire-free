@@ -53,7 +53,6 @@ mf-dl is a command line program for downloading mediafire links in bulk. It also
 * File: xxxxxxxxxxxxxxx/FILENAME
 * File metadata: xxxxxxxxxxxxxxx.info.json
 * Folder metadata: xxxxxxxxxxxxx.info.json
-* Avatars: avatars/*
 
 File keys are always 11, 15 or 31 characters long and folder keys are 13 or 19 characters long.
 Folder metadata files contain references to file or folder keys to avoid downloading the same file in a directory
