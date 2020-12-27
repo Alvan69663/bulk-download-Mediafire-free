@@ -59,3 +59,14 @@ File keys are always 11, 15 or 31 characters long and folder keys are 13 or 19 c
 Folder metadata files contain references to file or folder keys to avoid downloading the same file in a directory
 and as a stand alone file. Navigating through folders is a bit of a pain in the ass atm but I plan on making a tool to browse
 saved archives
+
+# Supported links
+* http(s)://\*.mediafire.com/?KEY
+* http(s)://\*.mediafire.com/\*/KEY
+* http(s)://\*.mediafire.com/\*.php?KEY
+* http(s)://\*.mediafire.com/convkey/\*/KEY??.EXT
+* http(s)://\*.mediafire.com/CUSTOM_FOLDER_NAME
+* http(s)://\*.mediafire.com/CONV_NAME.EXT (no metadata)
+* http(s)://\*.mediafire.com/conv/CONV_NAME.EXT (no metadata)
+* mfi.re domain
+* Obfuscated versions of the above e.g. mediafire (.) com (/) (?) KEY
