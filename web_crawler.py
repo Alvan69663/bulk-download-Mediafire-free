@@ -5,15 +5,15 @@ from urllib.parse import urljoin
 from colorama import init
 init() #This should fix ansi escape codes on windows TODO: test it
 
-timeout_t = 30
-http_headers = {
+TIMEOUT_T = 30
+HTTP_HEADERS = {
 	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:68.0) Gecko/20100101 Firefox/68.0" #Spoof firefox user agent
 }
-scrape_content_type = ["text/plain", "text/html"]
+SCRAPE_CONTENT_TYPE = ["text/plain", "text/html"]
 #Don't verify certificates so sites with expired certificates will also work
 #This will allow MITM attacks on https sites, but if that's the case then the
 #scraper getting incorrect links is the least of your problems
-verify_certificates=False
+VERIFY_CERTIFICATES=False
 requests.packages.urllib3.disable_warnings()
 
 STATUS_NOT_WORKING = 0
@@ -37,9 +37,9 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 		while((retries > 0)):
 			try:
 				#Determine if content type is suitable
-				web_rq = requests.head(url, headers=http_headers, timeout=timeout_t, allow_redirects=True, verify=verify_certificates)
+				web_rq = requests.head(url, headers=HTTP_HEADERS, timeout=TIMEOUT_T, allow_redirects=True, verify=VERIFY_CERTIFICATES)
 				web_headers = web_rq.headers
-				for content_type in scrape_content_type:
+				for content_type in SCRAPE_CONTENT_TYPE:
 					if(content_type in web_headers.get("Content-Type")):
 						skip_get = 0
 						break
@@ -49,7 +49,7 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 				else:
 					with print_lock:
 						print("\033[90mThread #{}\033[0m \033[95mScraping\033[0m \033[96mstatus={}\033[0m {}".format(thread_id, web_rq.status_code, url))
-					web_html = requests.get(url, headers=http_headers, timeout=timeout_t, verify=verify_certificates).text
+					web_html = requests.get(url, headers=HTTP_HEADERS, timeout=TIMEOUT_T, verify=VERIFY_CERTIFICATES).text
 					web_html.replace("<wbr>", "") #Some sites using <wbr> tag break url search
 				break
 			except Exception:

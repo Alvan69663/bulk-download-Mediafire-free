@@ -3,8 +3,8 @@ import requests, json, os, traceback, time, random, sys, argparse, queue, thread
 from colorama import init
 init() #This should fix ansi escape codes on windows TODO: test it
 
-timeout_t = 30
-http_headers = {
+TIMEOUT_T = 30
+HTTP_HEADERS = {
 	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:68.0) Gecko/20100101 Firefox/68.0" #Spoof firefox user agent
 }
 
@@ -19,7 +19,7 @@ def download_url(url, local_filename):
 	if(os.path.exists(local_filename)):
 		return
 	#Save url as local_filename
-	r = requests.get(url, headers=http_headers, stream=True, timeout=timeout_t)
+	r = requests.get(url, headers=HTTP_HEADERS, stream=True, timeout=TIMEOUT_T)
 	with open(local_filename, 'wb') as f:
 		for chunk in r.iter_content(chunk_size=1024): 
 			if chunk: # filter out keep-alive new chunks
@@ -27,12 +27,12 @@ def download_url(url, local_filename):
 
 def get_file_metadata(file_id):
 	#Get "response" key from mediafire's file/get_info.php API function
-	rq = requests.post("https://www.mediafire.com/api/1.5/file/get_info.php", params={"quick_key": file_id, "response_format": "json"}, headers=http_headers, timeout=timeout_t)
+	rq = requests.post("https://www.mediafire.com/api/1.5/file/get_info.php", params={"quick_key": file_id, "response_format": "json"}, headers=HTTP_HEADERS, timeout=TIMEOUT_T)
 	return rq.json()["response"]
 
 def find_direct_url(info_url):
 	#Find a direct download url on an info page
-	rq = requests.get(info_url, headers=http_headers, timeout=timeout_t)
+	rq = requests.get(info_url, headers=HTTP_HEADERS, timeout=TIMEOUT_T)
 	web_html = rq.text
 	
 	download_link_prefix = '<div class="download_link" id="download_link">\n                            <a class="preparing" href="#"><span>Preparing your download...</span></a>\n                                    <a class="input popsok"\n                        aria-label="Download file"\n                        href="'
@@ -68,7 +68,7 @@ def download_file(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lo
 		                                                                       metadata["file_info"]["filename"]))
 
 	#Individually shared files point to an info page, but files shared in a folder point directly to the file
-	dwnld_head = requests.head(metadata["file_info"]["links"]["normal_download"], headers=http_headers, timeout=timeout_t).headers
+	dwnld_head = requests.head(metadata["file_info"]["links"]["normal_download"], headers=HTTP_HEADERS, timeout=TIMEOUT_T).headers
 	if(str(dwnld_head.get("Location")).startswith("https://download")): #Direct
 		direct_url = metadata["file_info"]["links"]["normal_download"]
 	else: #Info page
@@ -95,13 +95,13 @@ def get_folder_content(folder_key, content_type, chunk):
 	#Get "response" key from mediafire's folder/get_info.php API function
 	rq = requests.get("https://www.mediafire.com/api/1.4/folder/get_content.php",
 	                  params={"content_type": content_type, "chunk": chunk, "folder_key": folder_key, "response_format": "json"},
-					  headers=http_headers,
-					  timeout=timeout_t)
+					  headers=HTTP_HEADERS,
+					  timeout=TIMEOUT_T)
 	return rq.json()["response"]
 
 def get_folder_metadata(folder_key):
 	#Get "response" key from mediafire's folder/get_info.php API function
-	rq = requests.post("https://www.mediafire.com/api/1.5/folder/get_info.php", params={"folder_key": folder_key, "response_format": "json"}, headers=http_headers, timeout=timeout_t)
+	rq = requests.post("https://www.mediafire.com/api/1.5/folder/get_info.php", params={"folder_key": folder_key, "response_format": "json"}, headers=HTTP_HEADERS, timeout=TIMEOUT_T)
 	return rq.json()["response"]
 
 def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock()):
