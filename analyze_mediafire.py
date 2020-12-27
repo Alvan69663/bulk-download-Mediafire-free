@@ -1,46 +1,33 @@
 #!/bin/env python3
-import analyze
+import re
 
-def get_mediafire_id(url):
-	charset = "qwertyuiopasdfghjklzxcvbnm1234567890"
-	candidates = []
 
-	current = ""
-	for char in url:
-		if(char in charset):
-			current+=char
-		else:
-			candidates.append(current)
-			current=""
-	candidates.append(current)
+#Searches for keys and lists of keys; also considers url encoded symbols
+mf_key_re = "(?i)(?:media.{0,5}?fire.{0,5}?com|mfi.{0,5}?re).{0,40}?(?:(?:\/|%2F).{0,40}?(?:\/|%2F)|(?:\?|%3F)).{0,40}?([0-9a-z,.]{22,}|[0-9a-z,]{19}|[0-9a-z,]{15}|[0-9a-z,]{13}|[0-9a-z,]{11})"
 
-	for cand in candidates:
-		#Determine type of object by key length
-		#I've never seen 19 and 31 characters long keys,
-		#but according to mediafire's API they are valid
-		if(len(cand) in [11, 15, 31]):
-			return {"type": "file", "id": cand}
-		elif(len(cand) in [13, 19]):
-			return {"type": "directory", "id": cand}
-	return {"type": "unknown", "id": url}
+#Searches for links to files (e.g. https://img19.mediafire.com/22d9d9406ca5a970a04cf542eb7e210241fcd8ca47494a3483729a9b7320afbb5g.jpg)
+#and for links to custom folders (e.g. https://www.mediafire.com/MonHun); this regex also considers url encoded symbols
+mf_link_re = "(?i)(?:media.{0,5}?fire.{0,5}?com|mfi.{0,5}?re)[^\/?%\r\n]{0,5}?(?:\/|%2F)[^\/?%\r\n]{0,5}?([a-zA-Z0-9_.]+)\s"
 
 def get_mediafire_urls(files):
-		urls = analyze.get_urls_from_files(list(files))
-		mediafire_urls = []
-		for url in urls:
-			if(("mediafire" in url) or ("mfi.re" in url)):
-				mediafire_urls.append(url)
+	output = {"keys": [], "links": [], "custom_folders": []}
+	for fname in files:
+		with open(fname, "r") as fl:
+			data = fl.read()
+		mf_key_matches = re.findall(mf_key_re, data)
+		for match in mf_key_matches:
+			for mf_key in match.split(","): #Mediafire allows specifying multiple keys by separating them with ","
+				if(len(mf_key) in [11,13,15,19,31]):
+					output["keys"].append(mf_key) #It's a valid key
+		
+		mf_link_matches = re.findall(mf_link_re, data)
+		for match in mf_link_matches:
+			if("." in match): #file
+				output["links"].append(match)
+			else: #custom folder
+				output["custom_folders"].append(match)
 
-		files = []
-		dirs = []
-		for url in mediafire_urls:
-			m_id = get_mediafire_id(url)
-			if(m_id["type"] == "file"):
-				if(m_id["id"] not in files): files.append(m_id["id"])
-			elif(m_id["type"] == "directory"):
-				if(m_id["id"] not in dirs): dirs.append(m_id["id"])
-
-		return {"files": files, "dirs": dirs}
+	return output
 
 if(__name__ == "__main__"):
 	import sys
@@ -52,12 +39,20 @@ if(__name__ == "__main__"):
 
 	urls = get_mediafire_urls(sys.argv[1:])
 
-	print("--- FILES ---")
-	for fl in urls["files"]:
-		print("https://mediafire.com/?{}".format(fl))
-
-	print()
-
-	print("--- DIRECTORIES ---")
-	for dr in urls["dirs"]:
-		print("https://mediafire.com/?{}".format(dr))
+	if(urls["keys"]):
+			print("--- KEYS ---")
+			for fl in urls["keys"]:
+				print("https://mediafire.com/?{}".format(fl))
+			print()
+	
+	if(urls["links"]):
+			print("--- LINKS ---")
+			for fl in urls["links"]:
+				print("https://mediafire.com/{}".format(fl))
+			print()
+	
+	if(urls["custom_folders"]):
+			print("--- CUSTOM FOLDERS ---")
+			for fl in urls["custom_folders"]:
+				print("https://mediafire.com/{}".format(fl))
+			print()

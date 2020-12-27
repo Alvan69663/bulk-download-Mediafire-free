@@ -1,5 +1,5 @@
 #!/bin/env python3
-import argparse, threading, queue, ipaddress, os, analyze, analyze_mediafire, requests, time, traceback
+import argparse, threading, queue, ipaddress, os, analyze, requests, time, traceback
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from colorama import init

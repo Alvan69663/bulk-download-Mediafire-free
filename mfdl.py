@@ -211,10 +211,7 @@ if(__name__ == "__main__"):
 			archive += fl.read().splitlines()
 
 	#Get ids
-	id_lists = analyze_mediafire.get_mediafire_urls(args.input)
-	id_list = []
-	id_list += id_lists["files"]
-	id_list += id_lists["dirs"]
+	mediafire_urls = analyze_mediafire.get_mediafire_urls(args.input)["keys"]
 
 	#Download
 	archive_lock = threading.Lock()
@@ -222,7 +219,7 @@ if(__name__ == "__main__"):
 	worker_list = []
 	download_queue = queue.Queue()
 
-	for mediafire_id in id_list:
+	for mediafire_id in mediafire_urls:
 		if(mediafire_id in archive):
 			continue #Skip if already downloaded
 		download_queue.put(mediafire_id)
