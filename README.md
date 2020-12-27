@@ -63,4 +63,3 @@ saved archives
 # What still doesn't work
 * Downloading directories with custom names: https://www.mediafire.com/MonHun
 * Downloading conv links: https://www.mediafire.com/conv/e415be4c7369b73bd513a038b28a93dec9659f1d50f02c3e0dd786aee91305566g.jpg
-* Downloading convkey links (except avatars): https://www.mediafire.com/convkey/626a/gdbuo2wpikoai0bfg.jpg
