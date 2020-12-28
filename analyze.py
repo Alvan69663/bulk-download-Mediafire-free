@@ -1,26 +1,13 @@
 #!/bin/env python3
-import urllib.parse
+import urllib.parse, re
 
-URL_CHARS = "^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-!/=?`*;:_{}\|~%"
+URL_RE = re.compile("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
 
 def truncate_schema(url):
 	return url[url.find("://")+3:]
 
 def get_urls(string):
-	urls = []
-	protocols = ["http://", "https://"]
-	for word in string.split(" "): #Get URLs
-		for prot in protocols:
-			if(prot in word):
-				url_to_append = ""
-				for symbol in word[word.find(prot):]: #Add symbols to url_to_append as long as they can be used in URLs
-					if(symbol in URL_CHARS):
-						url_to_append += symbol
-					else:
-						break
-				urls.append(url_to_append)
-				break
-	return urls
+	return URL_RE.findall(string)
 
 def get_urls_from_files(files):
 	urls = []
