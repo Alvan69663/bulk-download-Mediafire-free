@@ -33,7 +33,9 @@ mf-dl is a command line program for downloading mediafire links in bulk. It also
 	                     default is 6
 
 # web_crawler.py
-	usage: web_crawler.py [-h] [--threads THREADS] [--filter FILTER] start output
+	usage: web_crawler.py [-h] [--threads THREADS]
+	                      [--filter FILTER | --regex REGEX]
+	                      start output
 
 	Mediafire link web scraper
 
@@ -48,6 +50,7 @@ mf-dl is a command line program for downloading mediafire links in bulk. It also
 	                     crawl will start displaying captchas or smth the amount
 	                     of threads should be reduced; default is 6
 	  --filter FILTER    Only scrape websites where filter is found in the url
+	  --regex REGEX      Same as filter but uses regex
 
 # Directory structure:
 * File: keys/\*/FILENAME

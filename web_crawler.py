@@ -1,5 +1,5 @@
 #!/bin/env python3
-import argparse, threading, queue, ipaddress, os, analyze, requests, time, traceback
+import argparse, threading, queue, ipaddress, os, analyze, requests, time, traceback, re
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from log import log
@@ -21,7 +21,7 @@ STATUS_ERROR = 2
 
 MAX_RETRIES = 5
 
-def worker(download_queue, output, output_list, archive, print_lock, output_lock, archive_lock, url_filter, thread_id, threads_working, threads_working_lock):
+def worker(download_queue, output, output_list, archive, print_lock, output_lock, archive_lock, url_filter, url_regex, thread_id, threads_working, threads_working_lock):
 	while(1):
 		#Get element from the queue
 		with threads_working_lock:
@@ -99,8 +99,12 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 							with print_lock:
 								log("\033[92mFound\033[0m {}".format(html_url))
 			else: #Recurse into every site which isn't mediafire
-				if(not url_filter in html_url): #Filter url
-					continue
+				if(url_filter):
+					if(not url_filter in html_url): #Filter url
+						continue
+				elif(url_regex):
+					if(not url_regex.match(html_url)):
+						continue
 				with archive_lock:
 						already_downloaded = 0
 						if(html_url_no_schema in archive):
@@ -113,7 +117,9 @@ if(__name__ == "__main__"):
 	#CLI front end
 	parser = argparse.ArgumentParser(description="Mediafire link web scraper")
 	parser.add_argument("--threads", type=int, default=6, help="How many threads to use; if the site you're trying to crawl will start displaying captchas or smth the amount of threads should be reduced; default is 6")
-	parser.add_argument("--filter", default="", help="Only scrape websites where filter is found in the url")
+	parser_filters = parser.add_mutually_exclusive_group()
+	parser_filters.add_argument("--filter", default="", help="Only scrape websites where filter is found in the url")
+	parser_filters.add_argument("--regex", default="", help="Same as filter but uses regex")
 	parser.add_argument("start", help="Start URL from which the scraper will begin to recursively scrape pages")
 	parser.add_argument("output", help="File where a list of links will be saved")
 
@@ -137,7 +143,18 @@ if(__name__ == "__main__"):
 	for i in range(args.threads):
 		current_worker = threading.Thread(target=worker,
 		                                  daemon=True,
-		                                  args=(download_queue, args.output, output_list, archive, print_lock, output_lock, archive_lock, args.filter, i, threads_working, threads_working_lock,))
+		                                  args=(download_queue,
+		                                        args.output,
+		                                        output_list,
+		                                        archive,
+		                                        print_lock,
+		                                        output_lock,
+		                                        archive_lock,
+		                                        args.filter,
+		                                        re.compile(args.regex),
+		                                        i,
+		                                        threads_working,
+		                                        threads_working_lock,))
 		current_worker.name = i
 		current_worker.start()
 		worker_list.append(current_worker)
