@@ -49,7 +49,7 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 					with print_lock:
 						log("\033[95mScraping\033[0m \033[96mstatus={}\033[0m {}".format(web_rq.status_code, url))
 					web_html = requests.get(url, headers=HTTP_HEADERS, timeout=TIMEOUT_T, verify=VERIFY_CERTIFICATES).text
-					web_html.replace("<wbr>", "") #Some sites using <wbr> tag break url search
+					web_html = web_html.replace("<wbr>", "") #Some sites using <wbr> tag break url search
 				break
 			except Exception:
 				with print_lock:
