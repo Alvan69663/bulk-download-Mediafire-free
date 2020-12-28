@@ -1,19 +1,12 @@
 #!/bin/env python3
 import requests, json, os, traceback, time, random, sys, argparse, queue, threading, re
-from colorama import init
-init() #This should fix ansi escape codes on windows TODO: test it
+from log import log
 
 TIMEOUT_T = 30
 HTTP_HEADERS = {
 	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:68.0) Gecko/20100101 Firefox/68.0" #Spoof firefox user agent
 }
 CUSTOM_FOLDER_RE = re.compile(r'afI= "([a-z0-9]{13}|[a-z0-9]{19})"') #Regex used for locating keys on pages with custom named folders e.g. https://www.mediafire.com/MonHun
-
-def log(msg):
-	thread_name = threading.current_thread().name
-	if(thread_name != "MainThread"):
-		print("\033[90mThread #{}\033[0m ".format(thread_name), end="")
-	print(msg)
 
 def download_url(url, local_filename):
 	#Don't overwrite
