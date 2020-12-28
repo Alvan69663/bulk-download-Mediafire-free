@@ -159,6 +159,10 @@ if(__name__ == "__main__"):
 		current_worker.start()
 		worker_list.append(current_worker)
 	#Monitor threads
+	#In this case waiting for threads to exit wouldn't be possible because if
+	#a thread has nothing to do it must wait for pages to scrape. If a thread
+	#would exit immediately it wouldn't wait for the first thread to fetch URLs
+	#from the starting page and as a result only a single thread would remain.
 	any_thread_alive = 1
 	while(any_thread_alive):
 		time.sleep(15)
