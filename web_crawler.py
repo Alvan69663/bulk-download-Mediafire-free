@@ -2,8 +2,7 @@
 import argparse, threading, queue, ipaddress, os, analyze, requests, time, traceback
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from colorama import init
-init() #This should fix ansi escape codes on windows TODO: test it
+from log import log
 
 TIMEOUT_T = 30
 HTTP_HEADERS = {
@@ -40,29 +39,29 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 				web_rq = requests.head(url, headers=HTTP_HEADERS, timeout=TIMEOUT_T, allow_redirects=True, verify=VERIFY_CERTIFICATES)
 				web_headers = web_rq.headers
 				for content_type in SCRAPE_CONTENT_TYPE:
-					if(content_type in web_headers.get("Content-Type")):
+					if(content_type in str(web_headers.get("Content-Type"))):
 						skip_get = 0
 						break
 				if(skip_get): #Skip based on content type
 					with print_lock:
-						print("\033[90mThread #{}\033[0m \033[93mSkipping\033[0m {}".format(thread_id, url))
+						log("\033[93mSkipping\033[0m {}".format(url))
 				else:
 					with print_lock:
-						print("\033[90mThread #{}\033[0m \033[95mScraping\033[0m \033[96mstatus={}\033[0m {}".format(thread_id, web_rq.status_code, url))
+						log("\033[95mScraping\033[0m \033[96mstatus={}\033[0m {}".format(web_rq.status_code, url))
 					web_html = requests.get(url, headers=HTTP_HEADERS, timeout=TIMEOUT_T, verify=VERIFY_CERTIFICATES).text
 					web_html.replace("<wbr>", "") #Some sites using <wbr> tag break url search
 				break
 			except Exception:
 				with print_lock:
 					traceback.print_exc()
-					print("\033[90mThread #{}\033[0m \033[31mError while downloading \033[0m{}\033[31m! Retrying in 2 minutes ({} retries remaining)\033[0m".format(thread_id, url, retries))
+					print("\033[31mError while downloading \033[0m{}\033[31m! Retrying in 2 minutes ({} retries remaining)\033[0m".format(url, retries))
 				with threads_working_lock:
 					threads_working[thread_id] = STATUS_ERROR
 				time.sleep(60*2)
 				retries-=1
 		if(retries == 0):
 			with print_lock:
-				print("\033[90mThread #{}\033[0m \033[31mMax number of retries exceeded on\033[0m {}\033[31m!\033[0m".format(thread_id, url))
+				log("\033[31mMax number of retries exceeded on\033[0m {}\033[31m!\033[0m".format(url))
 			continue
 		elif(retries<MAX_RETRIES):
 			with threads_working_lock:
@@ -82,7 +81,7 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 			try: #Skip private ip addresses
 				if(ipaddress.ip_address(html_url_no_schema).is_private):
 					with print_lock:
-						print("\033[31mSkipping local address\033[0m {}".format(html_url_no_schema))
+						log("\033[31mSkipping local address\033[0m {}".format(html_url_no_schema))
 					continue
 			except ValueError:
 				pass
@@ -98,7 +97,7 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 								fl.write("\n")
 							output_list.append(html_url_no_schema)
 							with print_lock:
-								print("\033[90mThread #{}\033[0m \033[92mFound\033[0m {}".format(thread_id, html_url))
+								log("\033[92mFound\033[0m {}".format(html_url))
 			else: #Recurse into every site which isn't mediafire
 				if(not url_filter in html_url): #Filter url
 					continue
@@ -139,6 +138,7 @@ if(__name__ == "__main__"):
 		current_worker = threading.Thread(target=worker,
 		                                  daemon=True,
 		                                  args=(download_queue, args.output, output_list, archive, print_lock, output_lock, archive_lock, args.filter, i, threads_working, threads_working_lock,))
+		current_worker.name = i
 		current_worker.start()
 		worker_list.append(current_worker)
 	#Monitor threads
@@ -163,4 +163,4 @@ if(__name__ == "__main__"):
 			elif(threads_working_copy[i] == 2): thread_color = "\033[33m"
 			threads_working_copy[i] = thread_color + str(i) + "\033[0m"
 		with print_lock:
-			print("\033[90mThread status:\033[0m " + "".join(threads_working_copy))
+			log("\033[90mThread status:\033[0m " + "".join(threads_working_copy))
