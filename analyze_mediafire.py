@@ -2,7 +2,7 @@
 import re
 
 #Searches for keys and lists of keys; also considers url encoded symbols
-MF_KEY_RE = re.compile(r"(?i)(?:media.{0,5}?fire.{0,5}?com|mfi.{0,5}?re).{0,40}?(?:(?:\/|%2F).{0,40}?(?:\/|%2F)|(?:\?|%3F)).{0,40}?([0-9a-z,.]{22,}|[0-9a-z,]{19}|[0-9a-z,]{15}|[0-9a-z,]{13}|[0-9a-z,]{11})")
+MF_KEY_RE = re.compile(r"(?i)(?:media.{0,5}?fire.{0,5}?com|mfi.{0,5}?re).{0,40}?(?:(?:\/|%2F)[^<>\r\n]{0,40}?(?:\/|%2F)|(?:\?|%3F))[^<>\r\n]{0,40}?([0-9a-z,.]{22,}|[0-9a-z,]{19}|[0-9a-z,]{15}|[0-9a-z,]{13}|[0-9a-z,]{11})")
 
 #Searches for conv links to files (e.g. https://img19.mediafire.com/22d9d9406ca5a970a04cf542eb7e210241fcd8ca47494a3483729a9b7320afbb5g.jpg which can also be
 #https://img19.mediafire.com/conv/22d9d9406ca5a970a04cf542eb7e210241fcd8ca47494a3483729a9b7320afbb5g.jpg)
