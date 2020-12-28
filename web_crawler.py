@@ -33,7 +33,7 @@ def worker(download_queue, output, output_list, archive, print_lock, output_lock
 
 		#Download page
 		retries = MAX_RETRIES
-		skip_get = 1 #If a suitable is determined later
+		skip_get = 1 #It's determined later
 		while((retries > 0)):
 			try:
 				#Determine if content type is suitable
