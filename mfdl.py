@@ -9,9 +9,6 @@ HTTP_HEADERS = {
 CUSTOM_FOLDER_RE = re.compile(r'afI= "([a-z0-9]{13}|[a-z0-9]{19})"') #Regex used for locating keys on pages with custom named folders e.g. https://www.mediafire.com/MonHun
 
 def download_url(url, local_filename):
-	#Don't overwrite
-	if(os.path.exists(local_filename)):
-		return -1
 	#Save url as local_filename
 	r = requests.get(url, headers=HTTP_HEADERS, stream=True, timeout=TIMEOUT_T)
 	#If error
@@ -103,7 +100,7 @@ def get_folder_metadata(folder_key):
 	rq = requests.post("https://www.mediafire.com/api/1.5/folder/get_info.php", params={"folder_key": folder_key, "response_format": "json"}, headers=HTTP_HEADERS, timeout=TIMEOUT_T)
 	return rq.json()["response"]
 
-def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock()):
+def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock(), archive=[], archive_lock=threading.Lock()):
 	#Recursively downloads a folder
 	#Returns 1 on success and 0 otherwise
 	metadata = get_folder_metadata(mediafire_id)
@@ -129,7 +126,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for folder in metadata["children"]["folders"]:
-		download(folder["folderkey"], output_dir, only_meta=only_meta)
+		download(folder["folderkey"], output_dir, only_meta=only_meta, archive=archive, archive_lock=archive_lock)
 
 	#Download files inside
 	chunk = 1
@@ -140,19 +137,22 @@ def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for fl in metadata["children"]["files"]:
-		download(fl["quickkey"], output_dir, only_meta=only_meta)
+		download(fl["quickkey"], output_dir, only_meta=only_meta, archive=archive, archive_lock=archive_lock)
 	
 	#Download avatar
 	avatar_keys = analyze_mediafire.get_mediafire_links(metadata["folder_info"]["avatar"])["keys"]
 	for avatar in avatar_keys: #There should be only 1 key in an avatar link, but loop through it just to be sure
-		download(avatar, output_dir, only_meta=only_meta)
+		download(avatar, output_dir, only_meta=only_meta, archive=archive, archive_lock=archive_lock)
 
 	#Write metadata
+	if(os.path.exists(output_dir+"/"+mediafire_id+".info.json")): #Don't overwrite the .info.json file
+		log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
+		return 1
 	with open(output_dir + "/" + mediafire_id + ".info.json", "w") as fl:
 		fl.write(json.dumps(metadata))
 	return 1
 
-def download(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock()):
+def download(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock(), archive=[], archive_lock=threading.Lock()):
 	#Download mediafire key and save it in output_dir
 	#In case of a mediafire error return 0
 	#In case of an exception - retry after 10 seconds
@@ -162,16 +162,32 @@ def download(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lock())
 				log("\033[90m{}: Downloading...\033[0m".format(mediafire_id))
 			try:
 				if(mediafire_id.startswith("/conv/")): #Conv link
-					if(download_url("https://mediafire.com" + mediafire_id, output_dir+".."+mediafire_id) in [-1,200]): #Success or already exists
+					with archive_lock:
+						if(os.path.exists(output_dir+".."+mediafire_id) or (mediafire_id in archive)): #Duplicate
+							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
+							return 1
+						archive.append(mediafire_id)
+					if(download_url("https://mediafire.com" + mediafire_id, output_dir+".."+mediafire_id) == 200): #Success
 						log("\033[90m{}: \033[0m\033[96mDownloaded\033[0m".format(mediafire_id))
 						return 1
 					else:
 						log("\033[90m{}: \033[0m\033[31mNot found!\033[0m".format(mediafire_id))
 						return 0
 				elif(len(mediafire_id) in [11, 15, 31]): #Single file
+					with archive_lock:
+						if(os.path.exists(output_dir+mediafire_id+".info.json") or (mediafire_id in archive)): #Duplicate
+							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
+							return 1
+						archive.append(mediafire_id)
 					return download_file(mediafire_id, output_dir, only_meta=only_meta)
 				elif(len(mediafire_id) in [13, 19]): #Folder
-					return download_folder(mediafire_id, output_dir, only_meta=only_meta)
+					with archive_lock:
+						#Redownload contents even if .info.json file exists (without overwriting it) but skip if another thread already started downloading it
+						if(mediafire_id in archive):
+							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
+							return 1
+						archive.append(mediafire_id)
+					return download_folder(mediafire_id, output_dir, only_meta=only_meta, archive=archive, archive_lock=archive_lock)
 			except Exception:
 				with print_lock:
 					traceback.print_exc()
@@ -194,7 +210,7 @@ def resolve_custom_folder(name):
 		except Exception:
 			continue
 
-def worker(args, download_queue, archive_lock, print_lock):
+def worker(args, download_queue, archive, archive_lock, print_lock):
 	while(1):
 			try:
 				mediafire_id = download_queue.get(block=0)
@@ -202,14 +218,7 @@ def worker(args, download_queue, archive_lock, print_lock):
 				with print_lock:
 					log("\033[32mQueue is empty\033[0m")
 				return
-			download_successful = download(mediafire_id, args.output + "/keys/", only_meta=args.only_meta, print_lock=print_lock)
-			if(download_successful):
-				archive.append(mediafire_id)
-				if(args.archive):
-					with archive_lock:
-						with open(args.archive, "a") as fl:
-							fl.write(mediafire_id)
-							fl.write("\n")
+			download_successful = download(mediafire_id, args.output + "/keys/", only_meta=args.only_meta, print_lock=print_lock, archive=archive, archive_lock=archive_lock)
 			time.sleep(random.random())
 
 if(__name__ == "__main__"):
@@ -218,19 +227,17 @@ if(__name__ == "__main__"):
 	
 	parser = argparse.ArgumentParser(description="Mediafire downloader")
 	parser.add_argument("--only-meta", action="store_true", help="Only download *.info.json files")
-	parser.add_argument("--archive", help="File used to determine which files were already downloaded")
 	parser.add_argument("--threads", type=int, default=6, help="How many threads to use; in case mediafire starts showing captchas or smth the amount of threads should be reduced; default is 6")
 	parser.add_argument("output", help="Output directory")
 	parser.add_argument("input", nargs="+", help="Input file/files which will be searched for links")
 	args = parser.parse_args()
 
-	#Open archive
+	#Archive list is a list of files that started downloading. It's used to
+	#stop threads from starting to download the same file multiple times.
+	#For example if a file is downloading as a single file in one thread and
+	#another thread starts downloading it as part of a directory before the first
+	#thread finishes
 	archive = []
-	if(args.archive):
-		if(not os.path.exists(args.archive)):
-			with open(args.archive, 'w'): pass
-		with open(args.archive, "r") as fl:
-			archive += fl.read().splitlines()
 
 	#Get ids
 	mediafire_urls = analyze_mediafire.read_mediafire_links(args.input)
@@ -270,17 +277,13 @@ if(__name__ == "__main__"):
 	download_queue = queue.Queue()
 
 	for conv_link in mediafire_urls["conv"]: #Download conv links
-		if(conv_link in archive):
-			continue
 		download_queue.put(conv_link)
 
 	for mediafire_id in mediafire_urls["keys"]: #Download keys
-		if(mediafire_id in archive):
-			continue #Skip if already downloaded
 		download_queue.put(mediafire_id)
 
 	for i in range(args.threads): #Launch threads
-		thread = threading.Thread(target=worker, args=(args, download_queue, archive_lock, print_lock,))
+		thread = threading.Thread(target=worker, args=(args, download_queue, archive, archive_lock, print_lock,))
 		thread.name = i
 		thread.start()
 		worker_list.append(thread)
