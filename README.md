@@ -71,5 +71,6 @@ saved archives
 * http(s)://\*.mediafire.com/CUSTOM_FOLDER_NAME
 * http(s)://\*.mediafire.com/CONV_NAME.EXT (no metadata)
 * http(s)://\*.mediafire.com/conv/CONV_NAME.EXT (no metadata)
+* http(s)://\*.mediafire.com/?sharekey=SHAREKEY
 * mfi.re domain
 * Obfuscated versions of the above e.g. mediafire (.) com (/) (?) KEY

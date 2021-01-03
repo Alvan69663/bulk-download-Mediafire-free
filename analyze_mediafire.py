@@ -21,6 +21,13 @@ def get_mediafire_links(text):
 		for mf_key in match.split(","): #mf key; mediafire allows specifying multiple keys by separating them with ","
 			if(len(mf_key) in [11,13,15,19,31]):
 				if(mf_key not in output["keys"]): output["keys"].append(mf_key) #It's a valid key
+			else:
+				#There are also sharekey links: http://www.mediafire.com/?sharekey=2c58ee7e4f7e7dc2312dbd5f2bdc506260259ca196fcd1eb416b94653a3044fd
+				#Don't know how long they are so just to be sure treat every key that isn't 11,13,15,19 or 31 chars long as a sharekey.
+				#Difference between custom named folders and these links is that sharekey links redirect to regular links with keys, but
+				#the method of resolving custom names to keys should work with these links too.
+				sharekey_link = "?sharekey="+mf_key
+				if(sharekey_link not in output["custom_folders"]): output["custom_folders"].append(sharekey_link)
 
 	mf_link_matches = MF_LINK_RE.findall(text)
 	for match in mf_link_matches:
