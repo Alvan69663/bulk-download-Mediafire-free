@@ -1,3 +1,6 @@
+# Archive Team's archiving project
+If you have mediafire links you want to archive you can submit them to the [Archive Team](https://archiveteam.org/index.php?title=MediaFire). If you don't have any fancy raidz configurations this will be the best way to preserve them.
+
 # Description
 mf-dl is a command line program for downloading mediafire links in bulk. It also contains a web crawler which can be used for searching for mediafire links.
 

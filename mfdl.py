@@ -232,6 +232,9 @@ if(__name__ == "__main__"):
 	parser.add_argument("input", nargs="+", help="Input file/files which will be searched for links")
 	args = parser.parse_args()
 
+	#Message to encourage people to submit links to the archive team.
+	log("\033[33mIf you have mediafire links you want to archive you can submit them to the Archive Team (https://archiveteam.org/index.php?title=MediaFire). If you don't have any fancy raidz configurations this will be the best way to preserve them.\033[0m")
+
 	#Archive list is a list of files that started downloading. It's used to
 	#stop threads from starting to download the same file multiple times.
 	#For example if a file is downloading as a single file in one thread and
