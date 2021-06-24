@@ -4,6 +4,11 @@ If you have mediafire links you want to archive you can submit them to the [Arch
 # Description
 mf-dl is a command line program for downloading mediafire links in bulk. It also contains a web crawler which can be used for searching for mediafire links.
 
+# Tutorial
+If you're looking for a Crash Course, check out Data Horde's Tutorial:
+
+[How to Archive or Scrape MediaFire Files using mf-dl](https://datahorde.org/how-to-archive-or-scrape-mediafire-files-using-mf-dl/).
+
 # Running on Windows:
 1. Download and install python3 from their [website](https://www.python.org/)
 2. Clone this repo
