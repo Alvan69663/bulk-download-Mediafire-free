@@ -134,7 +134,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.
 	while(more_chunks != "no"):
 		children_files_chunk = get_folder_content(mediafire_id, "files", chunk)
 		metadata["children"]["files"] += children_files_chunk["folder_content"]["files"]
-		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
+		more_chunks = children_files_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for fl in metadata["children"]["files"]:
 		download(fl["quickkey"], output_dir, only_meta=only_meta, archive=archive, archive_lock=archive_lock)
