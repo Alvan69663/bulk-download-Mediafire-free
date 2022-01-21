@@ -51,7 +51,7 @@ def find_direct_url(info_url):
 
 	return {"url": direct_url, "location": location, "success": 1}
 
-def download_file(mediafire_id, output_dir, only_meta=0):
+def download_file(mediafire_id, output, only_meta=0, legacy=False):
 	#Returns 1 on success and 0 otherwise
 	metadata = get_file_metadata(mediafire_id)
 	if(metadata["result"] != "Success"): #Error from mediafire
@@ -81,13 +81,19 @@ def download_file(mediafire_id, output_dir, only_meta=0):
 		direct_url = direct_url["url"]
 
 	#Download file
-	if(only_meta == 0):
-		os.makedirs(output_dir + "/" + mediafire_id, exist_ok=True)
-		output_fname = output_dir + "/" + mediafire_id + "/" + metadata["file_info"]["filename"]
+	if not only_meta:
+		if legacy:
+			output_dir = output + "/" + mediafire_id
+			output_fname = output_dir + "/" + metadata["file_info"]["filename"]
+		else:
+			output_dir = output[0:output.rfind('/')]
+			output_fname = output
+		os.makedirs(output_dir, exist_ok=True)
 		download_url(direct_url, output_fname)
 	#Write metadata
-	with open(output_dir + "/" + mediafire_id + ".info.json", "w") as fl:
-		fl.write(json.dumps(metadata))
+	if legacy or only_meta:
+		with open(output + "/" + mediafire_id + ".info.json", "w") as fl:
+			fl.write(json.dumps(metadata))
 	return 1
 
 def get_folder_content(folder_key, content_type, chunk):
@@ -103,7 +109,7 @@ def get_folder_metadata(folder_key):
 	rq = requests.post("https://www.mediafire.com/api/1.5/folder/get_info.php", params={"folder_key": folder_key, "response_format": "json"}, headers=HTTP_HEADERS, timeout=TIMEOUT_T)
 	return rq.json()["response"]
 
-def download_folder(mediafire_id, output_dir, only_meta=0, archive=[]):
+def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], legacy=False):
 	#Recursively downloads a folder
 	#Returns 1 on success and 0 otherwise
 	metadata = get_folder_metadata(mediafire_id)
@@ -130,7 +136,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, archive=[]):
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for folder in metadata["children"]["folders"]:
-		new_items.append(folder["folderkey"])
+		new_items.append((folder["name"], folder["folderkey"]))
 
 	#Download files inside
 	chunk = 1
@@ -141,23 +147,25 @@ def download_folder(mediafire_id, output_dir, only_meta=0, archive=[]):
 		more_chunks = children_files_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for fl in metadata["children"]["files"]:
-		new_items.append(fl["quickkey"])
+		new_items.append((fl["filename"], fl["quickkey"]))
 
 	#Download avatar
 	avatar_keys = analyze_mediafire.get_mediafire_links(metadata["folder_info"]["avatar"])["keys"]
 	for avatar in avatar_keys: #There should be only 1 key in an avatar link, but loop through it just to be sure
-		new_items.append(avatar)
+		new_items.append(("avatar", avatar))
 
 	#Write metadata
-	if(os.path.exists(output_dir+"/"+mediafire_id+".info.json")): #Don't overwrite the .info.json file
-		log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
-		return (1, new_items)
-	with open(output_dir + "/" + mediafire_id + ".info.json", "w") as fl:
-		fl.write(json.dumps(metadata))
+	if legacy or only_meta:
+		if(os.path.exists(output_dir + "/keys/" + mediafire_id + ".info.json")): #Don't overwrite the .info.json file
+			log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
+			return (1, new_items)
+		with open(output_dir + "/keys/" + mediafire_id + ".info.json", "w") as fl:
+			fl.write(json.dumps(metadata))
+
 	return (1, new_items)
 
-def download(mediafire_id, output_dir, only_meta=0, archive=[]):
-	#Download mediafire key and save it in output_dir
+def download(mediafire_id, output, only_meta=0, archive=[], legacy=False):
+	#Download mediafire key and save it in output
 	#In case of a mediafire error return 0
 	#In case of an exception - retry after 10 seconds
 	#Otherwise return 1
@@ -167,11 +175,15 @@ def download(mediafire_id, output_dir, only_meta=0, archive=[]):
 			try:
 				if(mediafire_id.startswith("/conv/")): #Conv link
 					with ARCHIVE_LOCK:
-						if(os.path.exists(output_dir+".."+mediafire_id) or (mediafire_id in archive)): #Duplicate
+						if legacy:
+							output_file = output + mediafire_id
+						else:
+							output_file = output
+						if(os.path.exists(output_file) or (mediafire_id in archive)): #Duplicate
 							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
 							return (1, [])
 						archive.append(mediafire_id)
-					if(download_url("https://mediafire.com" + mediafire_id, output_dir+".."+mediafire_id) == 200): #Success
+					if(download_url("https://mediafire.com" + mediafire_id, output_file) == 200): #Success
 						log("\033[90m{}: \033[0m\033[96mDownloaded\033[0m".format(mediafire_id))
 						return (1, [])
 					else:
@@ -179,11 +191,15 @@ def download(mediafire_id, output_dir, only_meta=0, archive=[]):
 						return (0, [])
 				elif(len(mediafire_id) in [11, 15, 31]): #Single file
 					with ARCHIVE_LOCK:
-						if(os.path.exists(output_dir+mediafire_id+".info.json") or (mediafire_id in archive)): #Duplicate
+						if only_meta or legacy:
+							output_file = output + "/keys/" + mediafire_id + ".info.json"
+						else:
+							output_file = output
+						if(os.path.exists(output_file) or (mediafire_id in archive)): #Duplicate
 							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
 							return (1, [])
 						archive.append(mediafire_id)
-					return (download_file(mediafire_id, output_dir, only_meta=only_meta), [])
+					return (download_file(mediafire_id, output, only_meta=only_meta, legacy=legacy), [])
 				elif(len(mediafire_id) in [13, 19]): #Folder
 					with ARCHIVE_LOCK:
 						#Redownload contents even if .info.json file exists (without overwriting it) but skip if another thread already started downloading it
@@ -191,7 +207,7 @@ def download(mediafire_id, output_dir, only_meta=0, archive=[]):
 							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
 							return (1, [])
 						archive.append(mediafire_id)
-					return download_folder(mediafire_id, output_dir, only_meta=only_meta, archive=archive)
+					return download_folder(mediafire_id, output, only_meta=only_meta, archive=archive, legacy=legacy)
 			except Exception:
 				with PRINT_LOCK:
 					archive.remove(mediafire_id)
@@ -215,9 +231,9 @@ def resolve_custom_folder(name):
 		except Exception:
 			continue
 
-def worker(args, mediafire_id, archive):
-	(download_successful, new_items) = download(mediafire_id, args.output + "/keys/", only_meta=args.only_meta, archive=archive)
-	return new_items
+def worker(args, output, mediafire_id, archive):
+	(download_successful, new_items) = download(mediafire_id, output, only_meta=args.only_meta, archive=archive, legacy=args.legacy)
+	return (output, new_items)
 
 if(__name__ == "__main__"):
 	#CLI front end
@@ -225,6 +241,7 @@ if(__name__ == "__main__"):
 	parser = argparse.ArgumentParser(description="Mediafire downloader")
 	parser.add_argument("--only-meta", action="store_true", help="Only download *.info.json files")
 	parser.add_argument("--threads", type=int, default=6, help="How many threads to use; in case mediafire starts showing captchas or smth the amount of threads should be reduced; default is 6")
+	parser.add_argument("--legacy", action="store_true", help="Use the legacy flat directory layout")
 	parser.add_argument("output", help="Output directory")
 	parser.add_argument("input", nargs="+", help="Input file/files which will be searched for links")
 	args = parser.parse_args()
@@ -267,24 +284,38 @@ if(__name__ == "__main__"):
 				custom_folder_lookup[custom_folder] = resolved
 
 	#Create download dirs
-	os.makedirs(args.output + "/keys", exist_ok=True)
-	os.makedirs(args.output + "/conv", exist_ok=True)
+	if args.legacy or args.only_meta:
+		os.makedirs(args.output + "/keys", exist_ok=True)
+		os.makedirs(args.output + "/conv", exist_ok=True)
 
 	#Download
 	archive = []
 	task_queue = queue.Queue()
 
 	with multiprocessing.Pool(6) as pool:
-		def callback(new_items):
-			for item in new_items:
-				task_queue.put(pool.apply_async(worker, args=(args, item, archive,)))
+		def callback(child_info):
+			for item in child_info[1]:
+				item_name = item[0]
+				if "/.." in item_name:
+					with PRINT_LOCK:
+						log("Dangerous filename {} for item with id {}".format(item_name, item[1]))
+					item_name = item[1]
+				if args.legacy or args.only_meta:
+					output = args.output
+				else:
+					output = child_info[0] + "/" + item_name
+				task_queue.put(pool.apply_async(worker, args=(args, output, item[1], archive,), callback=callback))
 
 		for conv_link in mediafire_urls["conv"]: #Download conv links
-			task_queue.put(pool.apply_async(worker, args=(args, conv_link, archive,), callback=callback))
+			task_queue.put(pool.apply_async(worker, args=(args, args.output, conv_link, archive,), callback=callback))
 
 		for mediafire_id in mediafire_urls["keys"]: #Download keys
-			task_queue.put(pool.apply_async(worker, args=(args, mediafire_id, archive,), callback=callback))
+			task_queue.put(pool.apply_async(worker, args=(args, args.output, mediafire_id, archive,), callback=callback))
 
 		while not task_queue.empty():
 			task = task_queue.get()
 			task.wait()
+			try:
+				task.get()
+			except Exception as e:
+				log(e)
