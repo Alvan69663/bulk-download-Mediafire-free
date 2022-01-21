@@ -24,13 +24,13 @@ If you're looking for a Crash Course, check out Data Horde's Tutorial:
 # mfdl.py
 	usage: mfdl.py [-h] [--only-meta] [--archive ARCHIVE] [--threads THREADS]
 	               output input [input ...]
-	
+
 	Mediafire downloader
-	
+
 	positional arguments:
 	  output             Output directory
 	  input              Input file/files which will be searched for links
-	
+
 	optional arguments:
 	  -h, --help         show this help message and exit
 	  --only-meta        Only download *.info.json files and avatars
