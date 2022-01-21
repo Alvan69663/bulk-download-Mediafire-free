@@ -16,7 +16,7 @@ def download_url(url, local_filename):
 		return r.status_code
 	#Download
 	with open(local_filename, 'wb') as f:
-		for chunk in r.iter_content(chunk_size=1024): 
+		for chunk in r.iter_content(chunk_size=1024):
 			if chunk: # filter out keep-alive new chunks
 				f.write(chunk)
 	return r.status_code
@@ -30,13 +30,13 @@ def find_direct_url(info_url):
 	#Find a direct download url on an info page
 	rq = requests.get(info_url, headers=HTTP_HEADERS, timeout=TIMEOUT_T)
 	web_html = rq.text
-	
+
 	download_link_prefix = '<div class="download_link" id="download_link">\n                            <a class="preparing" href="#"><span>Preparing your download...</span></a>\n                                    <a class="input popsok"\n                        aria-label="Download file"\n                        href="'
 	uploaded_from_prefix = "<p>This file was uploaded from "
 
 	if((web_html.find(download_link_prefix) == -1)): #If not found
 		return {"success": 0}
-	
+
 	#Get direct url
 	direct_url = web_html[web_html.find(download_link_prefix)+len(download_link_prefix):]
 	direct_url = direct_url[:direct_url.find('"')]
@@ -55,7 +55,7 @@ def download_file(mediafire_id, output_dir, only_meta=0, print_lock=threading.Lo
 		with print_lock:
 			log("\033[90m{}:\033[0m \033[31m{}: {}\033[0m".format(mediafire_id, metadata["result"], metadata["message"]))
 		return 0 #Skip file
-	
+
 	#Display info
 	with print_lock:
 		log("\033[90m{}: {}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m".format(mediafire_id,
@@ -108,7 +108,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.
 		with print_lock:
 			log("\033[90m{}: \033[0m\033[31m{}: {}\033[0m".format(mediafire_id, metadata["result"], metadata["message"]))
 		return 0 #Skip folder
-	
+
 	with print_lock:
 		log("\033[90m{}: {}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m".format(mediafire_id,
 		                                                                       metadata["folder_info"]["created"],
@@ -138,7 +138,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, print_lock=threading.
 		chunk+=1
 	for fl in metadata["children"]["files"]:
 		download(fl["quickkey"], output_dir, only_meta=only_meta, archive=archive, archive_lock=archive_lock)
-	
+
 	#Download avatar
 	avatar_keys = analyze_mediafire.get_mediafire_links(metadata["folder_info"]["avatar"])["keys"]
 	for avatar in avatar_keys: #There should be only 1 key in an avatar link, but loop through it just to be sure
@@ -224,7 +224,7 @@ def worker(args, download_queue, archive, archive_lock, print_lock):
 if(__name__ == "__main__"):
 	#CLI front end
 	import analyze_mediafire
-	
+
 	parser = argparse.ArgumentParser(description="Mediafire downloader")
 	parser.add_argument("--only-meta", action="store_true", help="Only download *.info.json files")
 	parser.add_argument("--threads", type=int, default=6, help="How many threads to use; in case mediafire starts showing captchas or smth the amount of threads should be reduced; default is 6")
