@@ -66,6 +66,17 @@ def download_file(mediafire_id, output, only_meta=0, legacy=False):
 		                                                                       metadata["file_info"]["owner_name"],
 		                                                                       metadata["file_info"]["filename"]))
 
+	if not legacy and not only_meta:
+		filename = metadata["file_info"]["filename"]
+		if "/" in filename or ".." == filename:
+			with PRINT_LOCK:
+				log("Dangerous name {} for file with id {}".format(filename, mediafire_id))
+			filename = mediafire_id
+		output = output + "/" + filename
+		if(os.path.exists(output)): #Duplicate
+			log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
+			return (1, None)
+
 	#Individually shared files point to an info page, but files shared in a folder point directly to the file
 	dwnld_head = requests.head(metadata["file_info"]["links"]["normal_download"], headers=HTTP_HEADERS, timeout=TIMEOUT_T).headers
 	if(str(dwnld_head.get("Location")).startswith("https://download")): #Direct
@@ -116,7 +127,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], legacy=Fa
 	if(metadata["result"] != "Success"): #Error from mediafire
 		with PRINT_LOCK:
 			log("\033[90m{}: \033[0m\033[31m{}: {}\033[0m".format(mediafire_id, metadata["result"], metadata["message"]))
-		return (0, []) #Skip folder
+		return (0, None) #Skip folder
 
 	with PRINT_LOCK:
 		log("\033[90m{}: {}\033[0m \033[96m{}\033[0m \033[95m{}\033[0m".format(mediafire_id,
@@ -125,7 +136,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], legacy=Fa
 		                                                                       metadata["folder_info"]["name"]))
 
 	metadata["children"] = {"folders": [], "files": []}
-	new_items = []
+	folder_contents = ((metadata["folder_info"]["name"], mediafire_id), [])
 
 	#Download folders inside
 	chunk = 1
@@ -136,7 +147,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], legacy=Fa
 		more_chunks = children_folders_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for folder in metadata["children"]["folders"]:
-		new_items.append((folder["name"], folder["folderkey"]))
+		folder_contents[1].append(folder["folderkey"])
 
 	#Download files inside
 	chunk = 1
@@ -147,22 +158,22 @@ def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], legacy=Fa
 		more_chunks = children_files_chunk["folder_content"]["more_chunks"]
 		chunk+=1
 	for fl in metadata["children"]["files"]:
-		new_items.append((fl["filename"], fl["quickkey"]))
+		folder_contents[1].append(fl["quickkey"])
 
 	#Download avatar
 	avatar_keys = analyze_mediafire.get_mediafire_links(metadata["folder_info"]["avatar"])["keys"]
 	for avatar in avatar_keys: #There should be only 1 key in an avatar link, but loop through it just to be sure
-		new_items.append(("avatar", avatar))
+		folder_contents[1].append(avatar)
 
 	#Write metadata
 	if legacy or only_meta:
 		if(os.path.exists(output_dir + "/keys/" + mediafire_id + ".info.json")): #Don't overwrite the .info.json file
 			log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
-			return (1, new_items)
+			return (1, folder_contents)
 		with open(output_dir + "/keys/" + mediafire_id + ".info.json", "w") as fl:
 			fl.write(json.dumps(metadata))
 
-	return (1, new_items)
+	return (1, folder_contents)
 
 def download(mediafire_id, output, only_meta=0, archive=[], legacy=False):
 	#Download mediafire key and save it in output
@@ -181,31 +192,30 @@ def download(mediafire_id, output, only_meta=0, archive=[], legacy=False):
 							output_file = output
 						if(os.path.exists(output_file) or (mediafire_id in archive)): #Duplicate
 							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
-							return (1, [])
+							return (1, None)
 						archive.append(mediafire_id)
 					if(download_url("https://mediafire.com" + mediafire_id, output_file) == 200): #Success
 						log("\033[90m{}: \033[0m\033[96mDownloaded\033[0m".format(mediafire_id))
-						return (1, [])
+						return (1, None)
 					else:
 						log("\033[90m{}: \033[0m\033[31mNot found!\033[0m".format(mediafire_id))
-						return (0, [])
+						return (0, None)
 				elif(len(mediafire_id) in [11, 15, 31]): #Single file
 					with ARCHIVE_LOCK:
+						known_path_exists = False
 						if only_meta or legacy:
-							output_file = output + "/keys/" + mediafire_id + ".info.json"
-						else:
-							output_file = output
-						if(os.path.exists(output_file) or (mediafire_id in archive)): #Duplicate
+							known_path_exists = os.path.exists(output + "/keys/" + mediafire_id + ".info.json")
+						if(known_path_exists or (mediafire_id in archive)): #Duplicate
 							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
-							return (1, [])
+							return (1, None)
 						archive.append(mediafire_id)
-					return (download_file(mediafire_id, output, only_meta=only_meta, legacy=legacy), [])
+					return (download_file(mediafire_id, output, only_meta=only_meta, legacy=legacy), None)
 				elif(len(mediafire_id) in [13, 19]): #Folder
 					with ARCHIVE_LOCK:
 						#Redownload contents even if .info.json file exists (without overwriting it) but skip if another thread already started downloading it
 						if(mediafire_id in archive):
 							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
-							return (1, [])
+							return (1, None)
 						archive.append(mediafire_id)
 					return download_folder(mediafire_id, output, only_meta=only_meta, archive=archive, legacy=legacy)
 			except Exception:
@@ -232,8 +242,8 @@ def resolve_custom_folder(name):
 			continue
 
 def worker(args, output, mediafire_id, archive):
-	(download_successful, new_items) = download(mediafire_id, output, only_meta=args.only_meta, archive=archive, legacy=args.legacy)
-	return (output, new_items)
+	(download_successful, folder_contents) = download(mediafire_id, output, only_meta=args.only_meta, archive=archive, legacy=args.legacy)
+	return (output, folder_contents)
 
 if(__name__ == "__main__"):
 	#CLI front end
@@ -294,17 +304,23 @@ if(__name__ == "__main__"):
 
 	with multiprocessing.Pool(6) as pool:
 		def callback(child_info):
-			for item in child_info[1]:
-				item_name = item[0]
-				if "/.." in item_name:
+			output_base = child_info[0]
+			folder_contents = child_info[1]
+			if folder_contents is None:
+				return
+			if args.legacy or args.only_meta:
+				# Flat directory structure
+				output = args.output
+			else:
+				# Nest children in this folder
+				folder_name = folder_contents[0][0]
+				if "/" in folder_name or ".." == folder_name:
 					with PRINT_LOCK:
-						log("Dangerous filename {} for item with id {}".format(item_name, item[1]))
-					item_name = item[1]
-				if args.legacy or args.only_meta:
-					output = args.output
-				else:
-					output = child_info[0] + "/" + item_name
-				task_queue.put(pool.apply_async(worker, args=(args, output, item[1], archive,), callback=callback))
+						log("Dangerous name {} for folder with id {}".format(folder_name, folder_contents[0][1]))
+					folder_name = folder_contents[0][1]
+				output = output_base + "/" + folder_name
+			for id in folder_contents[1]:
+				task_queue.put(pool.apply_async(worker, args=(args, output, id, archive,), callback=callback))
 
 		for conv_link in mediafire_urls["conv"]: #Download conv links
 			task_queue.put(pool.apply_async(worker, args=(args, args.output, conv_link, archive,), callback=callback))
