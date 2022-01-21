@@ -22,7 +22,7 @@ If you're looking for a Crash Course, check out Data Horde's Tutorial:
 3. Using your package manager install python3 and download all of the dependencies manually or run `python3 -m pip install -r requirements.txt` in the directory with mf-dl to install them automatically
 
 # mfdl.py
-	usage: mfdl.py [-h] [--only-meta] [--archive ARCHIVE] [--threads THREADS]
+	usage: mfdl.py [-h] [--only-meta] [--threads THREADS] [--legacy]
 	               output input [input ...]
 
 	Mediafire downloader
@@ -34,11 +34,10 @@ If you're looking for a Crash Course, check out Data Horde's Tutorial:
 	optional arguments:
 	  -h, --help         show this help message and exit
 	  --only-meta        Only download *.info.json files and avatars
-	  --archive ARCHIVE  File used to determine which files were already
-	                     downloaded
 	  --threads THREADS  How many threads to use; in case mediafire starts showing
 	                     captchas or smth the amount of threads should be reduced;
 	                     default is 6
+	  --legacy           Use the legacy flat directory layout
 
 # web_crawler.py
 	usage: web_crawler.py [-h] [--threads THREADS]
@@ -60,7 +59,7 @@ If you're looking for a Crash Course, check out Data Horde's Tutorial:
 	  --filter FILTER    Only scrape websites where filter is found in the url
 	  --regex REGEX      Same as filter but uses regex
 
-# Directory structure:
+# Legacy Directory structure:
 * File: keys/\*/FILENAME
 * File and folder metadata: keys/\*.info.json
 * Conv links: conv/\*
