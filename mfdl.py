@@ -94,7 +94,7 @@ def download_file(mediafire_id, output, only_meta=0, legacy=False):
 	#Download file
 	if not only_meta:
 		if legacy:
-			output_dir = output + "/" + mediafire_id
+			output_dir = output + "/keys/" + mediafire_id
 			output_fname = output_dir + "/" + metadata["file_info"]["filename"]
 		else:
 			output_dir = output[0:output.rfind('/')]
@@ -103,7 +103,7 @@ def download_file(mediafire_id, output, only_meta=0, legacy=False):
 		download_url(direct_url, output_fname)
 	#Write metadata
 	if legacy or only_meta:
-		with open(output + "/" + mediafire_id + ".info.json", "w") as fl:
+		with open(output + "/keys/" + mediafire_id + ".info.json", "w") as fl:
 			fl.write(json.dumps(metadata))
 	return 1
 
