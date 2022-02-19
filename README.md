@@ -22,7 +22,7 @@ If you're looking for a Crash Course, check out Data Horde's Tutorial:
 3. Using your package manager install python3 and download all of the dependencies manually or run `python3 -m pip install -r requirements.txt` in the directory with mf-dl to install them automatically
 
 # mfdl.py
-	usage: mfdl.py [-h] [--only-meta] [--threads THREADS] [--legacy]
+	usage: mfdl.py [-h] [--only-meta] [--threads THREADS] [--archive-mode]
 	               output input [input ...]
 
 	Mediafire downloader
@@ -37,7 +37,7 @@ If you're looking for a Crash Course, check out Data Horde's Tutorial:
 	  --threads THREADS  How many threads to use; in case mediafire starts showing
 	                     captchas or smth the amount of threads should be reduced;
 	                     default is 6
-	  --legacy           Use the legacy flat directory layout
+	  --archive-mode, -a Use a flat directory layout and save all file metadata in *.info.json files
 
 # web_crawler.py
 	usage: web_crawler.py [-h] [--threads THREADS]

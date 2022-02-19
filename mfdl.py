@@ -51,7 +51,7 @@ def find_direct_url(info_url):
 
 	return {"url": direct_url, "location": location, "success": 1}
 
-def download_file(mediafire_id, output, only_meta=0, legacy=False):
+def download_file(mediafire_id, output, only_meta=0, archive_mode=False):
 	#Returns 1 on success and 0 otherwise
 	metadata = get_file_metadata(mediafire_id)
 	if(metadata["result"] != "Success"): #Error from mediafire
@@ -66,7 +66,7 @@ def download_file(mediafire_id, output, only_meta=0, legacy=False):
 		                                                                       metadata["file_info"]["owner_name"],
 		                                                                       metadata["file_info"]["filename"]))
 
-	if not legacy and not only_meta:
+	if not archive_mode and not only_meta:
 		filename = metadata["file_info"]["filename"]
 		if "/" in filename or ".." == filename:
 			with PRINT_LOCK:
@@ -93,7 +93,7 @@ def download_file(mediafire_id, output, only_meta=0, legacy=False):
 
 	#Download file
 	if not only_meta:
-		if legacy:
+		if archive_mode:
 			output_dir = output + "/keys/" + mediafire_id
 			output_fname = output_dir + "/" + metadata["file_info"]["filename"]
 		else:
@@ -102,7 +102,7 @@ def download_file(mediafire_id, output, only_meta=0, legacy=False):
 		os.makedirs(output_dir, exist_ok=True)
 		download_url(direct_url, output_fname)
 	#Write metadata
-	if legacy or only_meta:
+	if archive_mode or only_meta:
 		with open(output + "/keys/" + mediafire_id + ".info.json", "w") as fl:
 			fl.write(json.dumps(metadata))
 	return 1
@@ -120,7 +120,7 @@ def get_folder_metadata(folder_key):
 	rq = requests.post("https://www.mediafire.com/api/1.5/folder/get_info.php", params={"folder_key": folder_key, "response_format": "json"}, headers=HTTP_HEADERS, timeout=TIMEOUT_T)
 	return rq.json()["response"]
 
-def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], legacy=False):
+def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], archive_mode=False):
 	#Recursively downloads a folder
 	#Returns 1 on success and 0 otherwise
 	metadata = get_folder_metadata(mediafire_id)
@@ -166,7 +166,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], legacy=Fa
 		folder_contents[1].append(avatar)
 
 	#Write metadata
-	if legacy or only_meta:
+	if archive_mode or only_meta:
 		if(os.path.exists(output_dir + "/keys/" + mediafire_id + ".info.json")): #Don't overwrite the .info.json file
 			log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
 			return (1, folder_contents)
@@ -175,7 +175,7 @@ def download_folder(mediafire_id, output_dir, only_meta=0, archive=[], legacy=Fa
 
 	return (1, folder_contents)
 
-def download(mediafire_id, output, only_meta=0, archive=[], legacy=False):
+def download(mediafire_id, output, only_meta=0, archive=[], archive_mode=False):
 	#Download mediafire key and save it in output
 	#In case of a mediafire error return 0
 	#In case of an exception - retry after 10 seconds
@@ -186,7 +186,7 @@ def download(mediafire_id, output, only_meta=0, archive=[], legacy=False):
 			try:
 				if(mediafire_id.startswith("/conv/")): #Conv link
 					with ARCHIVE_LOCK:
-						if legacy:
+						if archive_mode:
 							output_file = output + mediafire_id
 						else:
 							output_file = output
@@ -203,13 +203,13 @@ def download(mediafire_id, output, only_meta=0, archive=[], legacy=False):
 				elif(len(mediafire_id) in [11, 15, 31]): #Single file
 					with ARCHIVE_LOCK:
 						known_path_exists = False
-						if only_meta or legacy:
+						if only_meta or archive_mode:
 							known_path_exists = os.path.exists(output + "/keys/" + mediafire_id + ".info.json")
 						if(known_path_exists or (mediafire_id in archive)): #Duplicate
 							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
 							return (1, None)
 						archive.append(mediafire_id)
-					return (download_file(mediafire_id, output, only_meta=only_meta, legacy=legacy), None)
+					return (download_file(mediafire_id, output, only_meta=only_meta, archive_mode=archive_mode), None)
 				elif(len(mediafire_id) in [13, 19]): #Folder
 					with ARCHIVE_LOCK:
 						#Redownload contents even if .info.json file exists (without overwriting it) but skip if another thread already started downloading it
@@ -217,7 +217,7 @@ def download(mediafire_id, output, only_meta=0, archive=[], legacy=False):
 							log("\033[90m{}:\033[0m \033[33mFile already exists. Skipping...\033[0m".format(mediafire_id))
 							return (1, None)
 						archive.append(mediafire_id)
-					return download_folder(mediafire_id, output, only_meta=only_meta, archive=archive, legacy=legacy)
+					return download_folder(mediafire_id, output, only_meta=only_meta, archive=archive, archive_mode=archive_mode)
 			except Exception:
 				with PRINT_LOCK:
 					archive.remove(mediafire_id)
@@ -242,7 +242,7 @@ def resolve_custom_folder(name):
 			continue
 
 def worker(args, output, mediafire_id, archive):
-	(download_successful, folder_contents) = download(mediafire_id, output, only_meta=args.only_meta, archive=archive, legacy=args.legacy)
+	(download_successful, folder_contents) = download(mediafire_id, output, only_meta=args.only_meta, archive=archive, archive_mode=args.archive_mode)
 	return (output, folder_contents)
 
 if(__name__ == "__main__"):
@@ -251,7 +251,7 @@ if(__name__ == "__main__"):
 	parser = argparse.ArgumentParser(description="Mediafire downloader")
 	parser.add_argument("--only-meta", action="store_true", help="Only download *.info.json files")
 	parser.add_argument("--threads", type=int, default=6, help="How many threads to use; in case mediafire starts showing captchas or smth the amount of threads should be reduced; default is 6")
-	parser.add_argument("--legacy", action="store_true", help="Use the legacy flat directory layout")
+	parser.add_argument("--archive-mode", "-a", dest="archive_mode", action="store_true", help="Use a flat directory layout and save all file metadata in *.info.json files")
 	parser.add_argument("output", help="Output directory")
 	parser.add_argument("input", nargs="+", help="Input file/files which will be searched for links")
 	args = parser.parse_args()
@@ -294,7 +294,7 @@ if(__name__ == "__main__"):
 				custom_folder_lookup[custom_folder] = resolved
 
 	#Create download dirs
-	if args.legacy or args.only_meta:
+	if args.archive_mode or args.only_meta:
 		os.makedirs(args.output + "/keys", exist_ok=True)
 		os.makedirs(args.output + "/conv", exist_ok=True)
 
@@ -308,7 +308,7 @@ if(__name__ == "__main__"):
 			folder_contents = child_info[1]
 			if folder_contents is None:
 				return
-			if args.legacy or args.only_meta:
+			if args.archive_mode or args.only_meta:
 				# Flat directory structure
 				output = args.output
 			else:
