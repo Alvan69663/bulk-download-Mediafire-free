@@ -33,8 +33,8 @@ def find_direct_url(info_url):
 	#Find a direct download url on an info page
 	rq = requests.get(info_url, headers=HTTP_HEADERS, timeout=TIMEOUT_T)
 	web_html = rq.text
-
-	download_link_prefix = '<div class="download_link" id="download_link">\n                            <a class="preparing" href="#"><span>Preparing your download...</span></a>\n                                    <a class="input popsok"\n                        aria-label="Download file"\n                        href="'
+	
+	download_link_prefix = '\nPreparing your download…\n<a class="input popsok" aria-label="Download file" href="'
 	uploaded_from_prefix = "<p>This file was uploaded from "
 
 	if((web_html.find(download_link_prefix) == -1)): #If not found
